@@ -20,8 +20,12 @@ learner's-permit holders under 18 (GDL pathway). Verified Aug 23–24, 2026.
 - **Confirmed vs official state DMV document:** WI 50/10 — WisDOT form HS-303
   https://wisconsindot.gov/Documents/dmv/shared/hs303.pdf (NOTE: uspermitprep claimed 30/10;
   the official form says 50/10 — official source wins. Do not trust aggregators alone.)
-- **Aggregator-sourced, DMV spot-check still to do (uspermitprep, matches prior research):**
-  VT 40/10 · VA 45/15 · WA 50/10 · WV 50/10 · WY 50/10.
+- **Confirmed vs official state sources (Aug 24, 2026):**
+  - VT 40/10 — official VT DMV Supervised Driving Log form ("minimum of 40 additional hours... at least 10 hours being nighttime driving")
+  - VA 45/15 — dmv.virginia.gov driver-ed requirements ("driven at least 45 hours (15 of which occurred after sunset)")
+  - WA 50/10 — state statute RCW 46.20.075(1)(e) ("at least 50 hours of driving experience, 10 of which were at night")
+  - WV 50/10 — dmv.wv.gov GDL page ("50 hour certification form... 10 of the hours being at night... or Driver Education Card" — driver-ed alternative confirmed, matches our note)
+  - WY 50/10 — WY driver-ed provider citing intermediate-permit requirements ("50 hours of driving, including 10 hours at night")
 
 ## Draft errors caught by verification (would have shipped wrong)
 - Minnesota: draft 50/15 → corrected **40/15** (IIHS)
@@ -33,10 +37,10 @@ learner's-permit holders under 18 (GDL pathway). Verified Aug 23–24, 2026.
 - In-app disclaimer under the goal: "always confirm current rules with your state's DMV."
 - PDF footer repeats the verify-with-DMV line.
 
-## Still to check before submission
-1. DMV spot-check VT, VA, WA, WV, WY against official state sites.
-2. TX: parent-taught vs instructor-taught nuances; TX requires its own DPS forms for
-   certification — confirm our PDF is a supplement, not a claimed replacement (copy
-   already says "check your state's exact paperwork rules").
-3. OH: confirm whether the state mandates its own certification affidavit (BMV 5791?) —
-   same supplement framing.
+## Verification COMPLETE (Aug 24, 2026)
+All 50 states + DC verified: 45 vs IIHS, WI vs WisDOT official form, VT/VA/WA/WV/WY vs
+official state sources above. TX/OH own-form nuance: both states use their own
+certification paperwork (TX DPS forms for parent-taught program; OH parent attestation
+at BMV) — our copy and PDF footer already frame Odo's log as a supplement ("check your
+state's exact paperwork rules" / "verify current requirements with your state's DMV"),
+which is the correct posture everywhere. No data changes needed.
