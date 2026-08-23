@@ -34,7 +34,7 @@
       "expo-local-authentication"
     ],
     "extra": {
-      "revenueCatApiKeyIos": "SET_AFTER_RC_PROJECT_CREATED",
+      "revenueCatApiKeyIos": "appl_wPRJBFtpezQLpxLcDFBjeQiwkQV",
       "eas": {
         "projectId": "SET_AFTER_EAS_PROJECT_CREATED"
       }
