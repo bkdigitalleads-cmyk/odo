@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Odo",
+    "slug": "odo-driving-log",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.bwk.odo",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "Odo uses Face ID to lock your driving log so only you can see it."
+      }
+    },
+    "android": {
+      "package": "com.bwk.odo",
+      "adaptiveIcon": {
+        "backgroundColor": "#15171A",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-local-authentication"
+    ],
+    "extra": {
+      "revenueCatApiKeyIos": "SET_AFTER_RC_PROJECT_CREATED",
+      "eas": {
+        "projectId": "SET_AFTER_EAS_PROJECT_CREATED"
+      }
+    },
+    "owner": "bkdeveloper123"
+  }
+}
