@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Odo",
-    "slug": "odo-driving-log",
+    "slug": "odoodo-driving-log",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -36,7 +36,7 @@
     "extra": {
       "revenueCatApiKeyIos": "appl_wPRJBFtpezQLpxLcDFBjeQiwkQV",
       "eas": {
-        "projectId": "SET_AFTER_EAS_PROJECT_CREATED"
+        "projectId": "7adb092c-993c-4ce0-930e-bf4807881736"
       }
     },
     "owner": "bkdeveloper123"
