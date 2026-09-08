@@ -66,3 +66,15 @@ Odo is a fully offline supervised-driving practice log for teen drivers with lea
 3. PDF log preview (share sheet or PDF open) → "A log the DMV will love"
 4. Onboarding state picker or Settings goal → "Your state's rules, built in"
 5. Settings/privacy → "No account. No cloud. No tracking."
+
+## 1.0.1 (Sep 2026) — cross-locale keywords + ratings engine
+**What's New (paste into ASC):**
+Small update under the hood: smoother rating prompts and minor refinements. Keep logging those drives — the license is getting closer.
+
+**es-MX keywords (79/99, additional English terms, no repeats):**
+instructor,lessons,wheel,journal,diary,sheet,form,signature,certificate,minutes
+
+**ar-SA keywords (85/99, additional English terms, no repeats):**
+graduated,provisional,restricted,curfew,beginner,junior,mileage,odometer,weather,rain
+
+Reminder: added localizations may require per-locale screenshots (OneLine 1.1 gotcha) — ASC pre-fills from en-US when added on the version page (Merit pattern); verify no validation warning before submit.
