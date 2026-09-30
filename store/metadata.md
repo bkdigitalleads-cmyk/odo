@@ -78,3 +78,10 @@ instructor,lessons,wheel,journal,diary,sheet,form,signature,certificate,minutes
 graduated,provisional,restricted,curfew,beginner,junior,mileage,odometer,weather,rain
 
 Reminder: added localizations may require per-locale screenshots (OneLine 1.1 gotcha) — ASC pre-fills from en-US when added on the version page (Merit pattern); verify no validation warning before submit.
+
+## Rename, Sep 30 2026 (version 1.0.4)
+
+- Name (en-US, all locales): `Driving Hours Log: Teen Permit`
+- Subtitle (en-US): `Student Driver & DMV Tracker`
+- Keywords (en-US): `learner,practice,supervised,logger,logbook,night,parent,signature,pdf,report,test,state,teenager`
+- Reason: the head term with measured search demand leads the name; no brand word (Steve Young rule). Set in App Store Connect on version 1.0.4.
