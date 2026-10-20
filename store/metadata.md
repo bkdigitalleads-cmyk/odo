@@ -105,8 +105,14 @@ Primary: Education · Secondary: Lifestyle
 Expect 4+ (no restricted content; verify via questionnaire).
 
 ## Pricing
-Free + IAP: odo_pro_lifetime $12.99 (HERO — time-boxed usage) · odo_pro_yearly $9.99 anchor.
-RevenueCat: entitlement `pro`, offering `default`, $rc_lifetime → lifetime, $rc_annual → yearly.
+As set in App Store Connect, Oct 20 2026:
+- odo_pro_lifetime (in the app: "Permit Pass"): $29.99 one-time (was $59.99 until Oct 20). Listed first and preselected on the in-app paywall.
+- odo_pro_weekly: 3-day free trial, then the weekly price. Preselected on the onboarding paywall; the only plan with a trial.
+- odo_pro_yearly: no free trial (the 7-day trial was deleted on Oct 20). Price $9.99/year as last recorded here, not re-checked on Oct 20.
+
+RevenueCat: entitlement `pro`, offering `default` with all three packages (confirmed Oct 20): $rc_weekly → odo_pro_weekly, $rc_annual → odo_pro_yearly, $rc_lifetime → odo_pro_lifetime.
+
+App code needs no change for these: prices and trial lengths are read from StoreKit, and trial wording only shows when RevenueCat reports the Apple ID as eligible for a free intro offer on that product, so Yearly now shows its plain price everywhere.
 
 ## Review notes (draft)
 Odo is a fully offline supervised-driving practice log for teen drivers with learner's permits. No account or sign-in. To test: complete onboarding (pick any state), log a drive with the ＋ button. Pro purchase (sandbox) can be reached via Settings → Odo Pro banner or by tapping PDF export. Restore works from Settings → Restore purchases.

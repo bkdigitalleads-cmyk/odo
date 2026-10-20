@@ -2,6 +2,7 @@
 
 Newest first. One entry per commit: date, version/build, what changed and why.
 
+- 2026-10-20: store/metadata.md Pricing updated for tonight's App Store Connect changes (docs only, no build). Odo Pro Lifetime is now $29.99 (was $59.99). The 7-day free trial on Odo Pro Yearly was deleted, so only Weekly has a trial (3 days). RevenueCat default offering confirmed to have all three packages ($rc_weekly, $rc_annual, $rc_lifetime), so the onboarding paywall's Weekly preselect works as written and the "confirm which packages" item below is settled. No code change needed: prices and trials come from StoreKit. Checked by reading the Pricing section back; the 1.0.6 description, What's New and review note mention no prices or Yearly trial.
 - 2026-10-20: Recorded commit 099f09b in AUDIT.md and NOTES.md (docs only, no build).
 - 2026-10-20 (099f09b): 1.0.6 build 10 (branch claude/charming-galileo-lu4qbw, PR, not merged). Scope Brian approved on Oct 19.
   - Onboarding for new installs only (skipped when the install already has drives, already finished onboarding, or is Pro): 3 value screens rewritten as outcomes for parents, state picker, new "Already logged some hours?" step, "where did you hear about Odo", then the Attend 1.0.5 paywall sequence: "Try Odo Pro free" (only when RevenueCat says the Apple ID is trial-eligible), the reminder screen (asks notification permission), then the onboarding paywall (Weekly preselected, close X after 3 s, "Continue", "No payment now" only when eligible). Copied from Attend: src/trial.ts, src/reminder.ts, src/reviews.ts pattern, Welcome.tsx pattern, plugins/withoutPushEntitlement.js.
@@ -20,5 +21,5 @@ Newest first. One entry per commit: date, version/build, what changed and why.
     - AUDIT 7 remainder: no CustomerInfo listener or foreground Pro re-check, because that lives in src/purchases.ts. Attend added checkPro/onProChange there; ask Brian before porting.
     - The website (index.html, site/, privacy.html, support.html) still leads with "no account, no cloud" style copy and mentions 10 free drives. Not part of the app; no build needed to change it.
     - src/components.tsx Stars and StarPicker are unused (fork leftovers).
-    - store/metadata.md Pricing lists Lifetime $12.99 and Yearly; the paywall also handles Weekly. Confirm which packages the RevenueCat default offering has, since the onboarding paywall preselects Weekly and falls back to Yearly, then Lifetime.
+    - (Settled Oct 20: the default offering has Weekly, Yearly and Lifetime.) store/metadata.md Pricing listed Lifetime $12.99 and Yearly; the paywall also handles Weekly.
 - 2026-10-15: Added CLAUDE.md, AUDIT.md (read-only bug check from Cowork) and this log. No app code changed. Live version 1.0.5 build 9.
