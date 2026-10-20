@@ -26,8 +26,9 @@ import {
   WEATHER_OPTIONS,
   ROAD_OPTIONS,
   fmtHours,
+  todayIso,
 } from '../db';
-import { maybeRequestReview } from '../reviews';
+import { maybeRequestReviewAfterDrive } from '../reviews';
 
 interface Props {
   visible: boolean;
@@ -36,12 +37,6 @@ interface Props {
 }
 
 const TIMER_KEY = 'odo.driveTimer.startedAt.v1';
-
-function todayIso(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
 
 function shiftDate(iso: string, days: number): string {
   const [y, m, d] = iso.split('-').map(Number);
@@ -183,7 +178,8 @@ export default function DriveFormModal({ visible, driveId, onClose }: Props) {
         weather,
         roads: roads.join(','),
         supervisor: supervisor.trim(),
-        miles: Number(milesText) || 0,
+        // decimal-pad shows "," in comma-decimal regions (AUDIT 6)
+        miles: Number(milesText.replace(',', '.')) || 0,
         notes,
       };
       if (editing && driveId !== null) {
@@ -193,12 +189,15 @@ export default function DriveFormModal({ visible, driveId, onClose }: Props) {
         if (supervisor.trim() && !settings.supervisorName) {
           updateSettings({ supervisorName: supervisor.trim() });
         }
-        maybeRequestReview(await countDrives());
+        maybeRequestReviewAfterDrive(await countDrives());
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       bumpData();
       reset();
       onClose();
+    } catch (e: any) {
+      // Keep the form open with what was typed (AUDIT 7).
+      Alert.alert('Couldn\u2019t save the drive', e?.message ?? 'Please try again.');
     } finally {
       setSaving(false);
     }
@@ -344,7 +343,7 @@ export default function DriveFormModal({ visible, driveId, onClose }: Props) {
             <View style={styles.quickRow}>
               <QuickChip theme={theme} label="None" onPress={() => setNightText('')} />
               <QuickChip theme={theme} label="Half" onPress={() => setNightText(String(Math.round(durationMin / 2)))} />
-              <QuickChip theme={theme} label="All 🌙" onPress={() => setNightText(String(durationMin))} />
+              <QuickChip theme={theme} label="All of it" onPress={() => setNightText(String(durationMin))} />
             </View>
           </Card>
 
@@ -406,7 +405,7 @@ export default function DriveFormModal({ visible, driveId, onClose }: Props) {
               style={[styles.input, styles.notes, { color: theme.text }]}
               value={notes}
               onChangeText={setNotes}
-              placeholder="First time merging onto the highway — smooth!"
+              placeholder="First time merging onto the highway. Smooth!"
               placeholderTextColor={theme.textFaint}
               multiline
             />

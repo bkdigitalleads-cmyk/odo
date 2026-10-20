@@ -15,9 +15,10 @@ import {
 } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useTheme, fonts } from '../theme';
-import { Card, SectionTitle, ProBadge } from '../components';
+import { Card, SectionTitle, ProBadge, NumberField } from '../components';
+import Icon from '../icons';
 import { useApp } from '../state';
-import { deleteAllData } from '../db';
+import { deleteAllData, PRIOR_HOURS_LABEL } from '../db';
 import { STATE_REQS, getStateReq, CUSTOM_CODE } from '../states';
 import { restorePurchases, isBillingAvailable } from '../purchases';
 
@@ -31,12 +32,14 @@ export default function SettingsScreen() {
   const [statePickerOpen, setStatePickerOpen] = useState(false);
 
   const stateReq = getStateReq(settings.stateCode);
-  const isCustom = settings.customTotalHours != null;
+  // A state with no hour minimum (AR, MS) gets editable goal inputs too (AUDIT 1).
+  const isCustom = settings.customTotalHours != null || (stateReq != null && stateReq.totalHours == null);
 
   const pickState = async (code: string) => {
-    if (code === CUSTOM_CODE) {
+    // Custom, or a state with no hour minimum: an editable goal (AUDIT 1).
+    if (code === CUSTOM_CODE || getStateReq(code)?.totalHours == null) {
       await updateSettings({
-        stateCode: CUSTOM_CODE,
+        stateCode: code,
         customTotalHours: settings.customTotalHours ?? goal.totalHours,
         customNightHours: settings.customNightHours ?? goal.nightHours,
       });
@@ -147,7 +150,11 @@ export default function SettingsScreen() {
           <Text style={[styles.goalText, { color: theme.textSecondary }]}>
             {goal.totalHours} supervised hours
             {goal.nightHours > 0 ? `, including ${goal.nightHours} at night` : ''}
-            {goal.source === 'default' ? ' (common default — pick your state above)' : ''}
+            {goal.source === 'default'
+              ? stateReq
+                ? ' (a common default, since your state sets no minimum; change it below)'
+                : ' (a common default until you pick your state above)'
+              : ''}
           </Text>
           {stateReq?.note ? (
             <Text style={[styles.goalNote, { color: theme.textFaint }]}>{stateReq.note}</Text>
@@ -157,32 +164,72 @@ export default function SettingsScreen() {
           <View style={styles.customRow}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.customLabel, { color: theme.textSecondary }]}>Total hours</Text>
-              <TextInput
+              {/* Saves on blur, so clearing the field to retype never saves 1 (AUDIT 3). */}
+              <NumberField
                 style={[styles.customInput, { color: theme.text, borderColor: theme.border }]}
-                keyboardType="number-pad"
                 maxLength={3}
-                value={String(settings.customTotalHours ?? '')}
-                onChangeText={(v) =>
-                  updateSettings({ customTotalHours: Math.max(1, Number(v) || 0) || 1 })
-                }
+                value={settings.customTotalHours ?? goal.totalHours}
+                onCommit={(n) => {
+                  const total = Math.max(1, n);
+                  updateSettings({
+                    customTotalHours: total,
+                    customNightHours: Math.min(settings.customNightHours ?? goal.nightHours, total),
+                  });
+                }}
               />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.customLabel, { color: theme.textSecondary }]}>Night hours</Text>
-              <TextInput
+              <NumberField
                 style={[styles.customInput, { color: theme.text, borderColor: theme.border }]}
-                keyboardType="number-pad"
                 maxLength={3}
-                value={String(settings.customNightHours ?? '')}
-                onChangeText={(v) => updateSettings({ customNightHours: Number(v) || 0 })}
+                value={settings.customNightHours ?? goal.nightHours}
+                onCommit={(n) => {
+                  const total = settings.customTotalHours ?? goal.totalHours;
+                  updateSettings({ customTotalHours: total, customNightHours: Math.min(n, total) });
+                }}
               />
             </View>
           </View>
         )}
         <Text style={[styles.disclaimer, { color: theme.textFaint }]}>
-          State numbers are provided as a convenience — always confirm current rules with
-          your state's DMV. You can set a custom goal any time.
+          State numbers are provided as a convenience. Always confirm current rules with your
+          state's DMV. You can set a custom goal any time.
         </Text>
+      </Card>
+
+      <SectionTitle theme={theme}>Hours before Odo</SectionTitle>
+      <Card theme={theme}>
+        <Text style={[styles.goalText, { color: theme.textSecondary }]}>
+          Hours from a paper log or another app. They count toward the goal and print on the log
+          as their own row: {PRIOR_HOURS_LABEL}.
+        </Text>
+        <View style={styles.customRow}>
+          <View style={{ flex: 1 }}>
+            <View style={styles.labelRow}>
+              <Icon name="sun" size={13} color={theme.textSecondary} />
+              <Text style={[styles.customLabel, { color: theme.textSecondary, marginBottom: 0 }]}>Day hours</Text>
+            </View>
+            <NumberField
+              decimals
+              style={[styles.customInput, { color: theme.text, borderColor: theme.border }]}
+              value={settings.priorDayMin / 60}
+              onCommit={(h) => updateSettings({ priorDayMin: Math.round(Math.min(h, 999) * 60) })}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={styles.labelRow}>
+              <Icon name="moon" size={13} color={theme.textSecondary} />
+              <Text style={[styles.customLabel, { color: theme.textSecondary, marginBottom: 0 }]}>Night hours</Text>
+            </View>
+            <NumberField
+              decimals
+              style={[styles.customInput, { color: theme.text, borderColor: theme.border }]}
+              value={settings.priorNightMin / 60}
+              onCommit={(h) => updateSettings({ priorNightMin: Math.round(Math.min(h, 999) * 60) })}
+            />
+          </View>
+        </View>
       </Card>
 
       <SectionTitle theme={theme}>Names on the log</SectionTitle>
@@ -222,8 +269,8 @@ export default function SettingsScreen() {
       <SectionTitle theme={theme}>Privacy & data</SectionTitle>
       <Card theme={theme}>
         <Text style={[styles.privacyNote, { color: theme.textSecondary }]}>
-          Your driving log never leaves this iPhone. No account, no cloud, no location
-          tracking. Use the Log tab to export a copy whenever you like.
+          Works offline, anywhere you drive. Your log is saved on this iPhone, and you can export
+          a copy from the Log tab whenever you like.
         </Text>
       </Card>
 
@@ -313,9 +360,9 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   scroll: { padding: 20, paddingTop: 24, paddingBottom: 48 },
-  title: { fontSize: 26, fontWeight: fonts.weight.bold, letterSpacing: -0.5, marginBottom: 8 },
+  title: { fontSize: 30, fontFamily: fonts.display, marginBottom: 8 },
   upsell: { marginTop: 8, borderWidth: 0 },
-  upsellTitle: { fontSize: 17, fontWeight: fonts.weight.bold, marginBottom: 4 },
+  upsellTitle: { fontSize: 18, fontFamily: fonts.heading, marginBottom: 4 },
   upsellSub: { fontSize: 14, lineHeight: 20 },
   row: {
     flexDirection: 'row',
@@ -332,6 +379,7 @@ const styles = StyleSheet.create({
   goalNote: { fontSize: 12, marginTop: 4, lineHeight: 17 },
   customRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
   customLabel: { fontSize: 12, fontWeight: fonts.weight.semibold, marginBottom: 4 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
   customInput: {
     borderWidth: 1,
     borderRadius: 8,
@@ -352,7 +400,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  pickerTitle: { fontSize: 17, fontWeight: fonts.weight.bold },
+  pickerTitle: { fontSize: 18, fontFamily: fonts.heading },
   stateRow: {
     flexDirection: 'row',
     alignItems: 'center',

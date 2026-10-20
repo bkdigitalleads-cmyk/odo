@@ -13,6 +13,7 @@ import {
 import { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import { useTheme, fonts } from '../theme';
 import { PillButton } from '../components';
+import Icon, { IconName } from '../icons';
 import { useApp } from '../state';
 import {
   getOffering,
@@ -20,38 +21,63 @@ import {
   restorePurchases,
   isBillingAvailable,
 } from '../purchases';
+import { getTrialEligibleIds, trialLabel } from '../trial';
+import { cancelTrialReminder, scheduleTrialReminderIfTrial } from '../reminder';
+import { maybeRequestReview } from '../reviews';
 
-// Copy lever 1: the word "free" sits next to a feature.
-const FEATURES: { icon: string; title: string; sub: string; free?: boolean }[] = [
-  { icon: '🚗', title: 'Log a drive in seconds', sub: 'Day or night, minutes, and who rode along.', free: true },
-  { icon: '📄', title: 'DMV-ready PDF log', sub: 'Official-style practice log with totals and signature lines.' },
-  { icon: '♾️', title: 'Unlimited drives', sub: 'Free logs 10 drives. Pro goes all the way to the license.' },
-  { icon: '🌙', title: 'Night-hours tracking', sub: 'Day and night totals, matched to your state\u2019s rule.' },
-  { icon: '🔒', title: 'Face ID lock', sub: 'The log stays your family\u2019s business.' },
-];
+/** On the first-launch paywall the close button appears after this delay. */
+const ONBOARDING_CLOSE_DELAY_MS = 3000;
+
+/** The Lifetime product's name in the app. Its price always comes from StoreKit. */
+const PERMIT_PASS = 'Permit Pass';
 
 const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
-
-function trialLabel(pkg: PurchasesPackage | undefined): string | null {
-  const intro = pkg?.product.introPrice;
-  if (!intro || intro.price !== 0) return null;
-  const n = intro.periodNumberOfUnits;
-  const unit = intro.periodUnit.toLowerCase();
-  return `${n} ${unit}${n === 1 ? '' : 's'} free`;
-}
 
 function perUnit(pkg: PurchasesPackage | undefined, unit: 'week' | 'year'): string {
   return pkg ? `${pkg.product.priceString}/${unit}` : '';
 }
 
-export default function PaywallModal({ privacyUrl }: { privacyUrl: string }) {
+/**
+ * Two paywalls in one component:
+ *  - onboarding: the first-launch paywall after the trial and reminder
+ *    screens. Weekly is preselected, trial wording shows when this Apple ID
+ *    can get the trial, and the close button appears after 3 seconds.
+ *  - in-app (drive limit, PDF share, Pro button): the Permit Pass (Lifetime)
+ *    is preselected and listed first, and the free trial is not advertised.
+ * While the Lifetime price is 0 (launch offer) both behave as before: the
+ * free Lifetime leads.
+ */
+export default function PaywallModal({ privacyUrl, onboarding = false }: { privacyUrl: string; onboarding?: boolean }) {
   const theme = useTheme();
-  const { paywallVisible, hidePaywall, setIsPro } = useApp();
+  const { paywallVisible, hidePaywall, setIsPro, freeDriveLimit } = useApp();
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [selected, setSelected] = useState<PurchasesPackage | null>(null);
+  // Product ids whose free trial this Apple ID can still get (RevenueCat eligibility check).
+  const [trialEligible, setTrialEligible] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [canClose, setCanClose] = useState(!onboarding);
+
+  // Copy lever 1: the word "free" sits next to a feature.
+  const features: { icon: IconName; title: string; sub: string; free?: boolean }[] = [
+    { icon: 'timer', title: 'Log a drive in seconds', sub: 'Day or night, minutes, and who rode along.', free: true },
+    { icon: 'log', title: 'DMV-ready PDF log', sub: 'Dated drives, day and night totals, and signature lines.' },
+    {
+      icon: 'infinity',
+      title: 'Unlimited drives',
+      sub: `Free logs ${freeDriveLimit} drives. Pro goes all the way to the license.`,
+    },
+    { icon: 'moon', title: 'Night-hours tracking', sub: 'Day and night totals, matched to your state\u2019s rule.' },
+    { icon: 'lock', title: 'Face ID lock', sub: 'The log stays your family\u2019s business.' },
+  ];
+
+  useEffect(() => {
+    if (!paywallVisible || !onboarding) return;
+    setCanClose(false);
+    const t = setTimeout(() => setCanClose(true), ONBOARDING_CLOSE_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [paywallVisible, onboarding]);
 
   useEffect(() => {
     if (!paywallVisible) return;
@@ -59,15 +85,21 @@ export default function PaywallModal({ privacyUrl }: { privacyUrl: string }) {
     (async () => {
       const off = await getOffering();
       setOffering(off);
-      // Weekly with 3 days free is the primary plan (Young: weekly beat yearly 3x).
+      setTrialEligible(await getTrialEligibleIds(off?.availablePackages ?? []));
       // During a launch offer the Lifetime price is set to 0 in App Store Connect; then it leads.
       const freeLifetime = off?.lifetime && off.lifetime.product.price === 0 ? off.lifetime : null;
+      const fallback = off?.availablePackages?.[0] ?? null;
       const primary =
-        freeLifetime ?? off?.weekly ?? off?.annual ?? off?.lifetime ?? off?.availablePackages?.[0] ?? null;
+        freeLifetime ??
+        (onboarding
+          ? // Weekly with 3 days free is the onboarding plan (Young: weekly beat yearly 3x).
+            off?.weekly ?? off?.annual ?? off?.lifetime ?? fallback
+          : // In the app: one payment for the whole permit.
+            off?.lifetime ?? off?.annual ?? off?.weekly ?? fallback);
       setSelected(primary);
       setLoading(false);
     })();
-  }, [paywallVisible]);
+  }, [paywallVisible, onboarding]);
 
   const buy = async () => {
     if (!selected) return;
@@ -77,7 +109,21 @@ export default function PaywallModal({ privacyUrl }: { privacyUrl: string }) {
     if (res.ok && res.isPro) {
       setIsPro(true);
       hidePaywall();
-      Alert.alert('You’re all set', 'Every drive counts now, all the way to the license.');
+      // Only does anything when this purchase started a free trial and notifications are allowed.
+      const reminded = await scheduleTrialReminderIfTrial();
+      Alert.alert(
+        'You\u2019re all set',
+        `Every drive counts now, all the way to the license.${
+          reminded ? ' We\u2019ll remind you 1 day before your trial ends.' : ''
+        }`,
+        [{ text: 'OK', onPress: () => onboarding && maybeRequestReview('purchase') }]
+      );
+    } else if (res.ok) {
+      // The store took the purchase but Pro isn't showing yet (it can lag).
+      Alert.alert(
+        'Almost there',
+        'Your purchase went through but Pro isn\u2019t showing yet. Tap Restore purchases in a moment to turn it on.'
+      );
     } else if (!res.userCancelled && res.error) {
       Alert.alert('Purchase failed', res.error);
     }
@@ -88,21 +134,23 @@ export default function PaywallModal({ privacyUrl }: { privacyUrl: string }) {
     setRestoring(true);
     const res = await restorePurchases();
     setRestoring(false);
+    if (res.ok) cancelTrialReminder();
     if (res.ok && res.isPro) {
       setIsPro(true);
       hidePaywall();
       Alert.alert('Restored', 'Your Pro purchase is active again.');
     } else if (res.ok) {
-      Alert.alert('No purchases found', 'We couldn’t find a previous Pro purchase on this Apple ID.');
+      Alert.alert('No purchases found', 'We couldn\u2019t find a previous Pro purchase on this Apple ID.');
     } else {
       Alert.alert('Restore failed', res.error ?? 'Please try again.');
     }
   };
 
   const lifetimeFree = (offering?.lifetime?.product.price ?? 1) === 0;
-  // Order: Weekly (primary), Yearly, Lifetime (anchor). Lifetime leads while it is free.
+  // Onboarding: Weekly (primary), Yearly, Lifetime (anchor). In the app: the Permit Pass leads.
+  // Lifetime always leads while it is free.
   const rank = (p: PurchasesPackage) =>
-    p.packageType === 'LIFETIME' && lifetimeFree
+    p.packageType === 'LIFETIME' && (lifetimeFree || !onboarding)
       ? -1
       : p.packageType === 'WEEKLY' ? 0 : p.packageType === 'ANNUAL' ? 1 : p.packageType === 'LIFETIME' ? 2 : 3;
   const packages = [...(offering?.availablePackages ?? [])].sort((a, b) => rank(a) - rank(b));
@@ -110,8 +158,10 @@ export default function PaywallModal({ privacyUrl }: { privacyUrl: string }) {
   const weeklyPkg = packages.find((p) => p.packageType === 'WEEKLY');
   const annualPkg = packages.find((p) => p.packageType === 'ANNUAL');
   const lifetimePkg = packages.find((p) => p.packageType === 'LIFETIME');
-  const weeklyTrial = trialLabel(weeklyPkg);
-  const annualTrial = trialLabel(annualPkg);
+  const weeklyTrial = trialLabel(weeklyPkg, trialEligible);
+  const annualTrial = trialLabel(annualPkg, trialEligible);
+  // Trial wording in the headline, plan rows and button area: onboarding only.
+  const showTrial = (label: string | null) => (onboarding ? label : null);
 
   const fmt = (n: number, cur?: string) =>
     n.toLocaleString(undefined, { style: 'currency', currency: cur ?? 'USD' });
@@ -140,8 +190,8 @@ export default function PaywallModal({ privacyUrl }: { privacyUrl: string }) {
   if (lifetimePkg)
     disclosureParts.push(
       lifetimeFree
-        ? 'Lifetime is a one-time purchase, free right now as a launch offer.'
-        : `Lifetime ${lifetimePkg.product.priceString} is a one-time purchase.`
+        ? `${PERMIT_PASS} (Lifetime) is a one-time purchase, free right now as a launch offer.`
+        : `${PERMIT_PASS} (Lifetime) ${lifetimePkg.product.priceString} is a one-time purchase.`
     );
   const disclosure =
     (disclosureParts.length > 0
@@ -154,12 +204,20 @@ export default function PaywallModal({ privacyUrl }: { privacyUrl: string }) {
       visible={paywallVisible}
       animationType="slide"
       presentationStyle="pageSheet"
-      onRequestClose={hidePaywall}
+      onRequestClose={() => canClose && hidePaywall()}
     >
       <View style={[styles.container, { backgroundColor: theme.bg }]}>
         <ScrollView contentContainerStyle={styles.scroll}>
-          <Pressable onPress={hidePaywall} hitSlop={12} style={styles.close}>
-            <Text style={[styles.closeText, { color: theme.textFaint }]}>✕</Text>
+          {/* Holds its space while hidden so nothing jumps when the close button appears. */}
+          <Pressable
+            onPress={hidePaywall}
+            disabled={!canClose}
+            hitSlop={12}
+            style={[styles.close, { opacity: canClose ? 1 : 0 }]}
+            accessibilityLabel="Close"
+            accessibilityElementsHidden={!canClose}
+          >
+            <Icon name="close" size={22} color={theme.textFaint} />
           </Pressable>
 
           <Text style={[styles.title, { color: theme.text }]}>
@@ -168,13 +226,17 @@ export default function PaywallModal({ privacyUrl }: { privacyUrl: string }) {
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             {lifetimeFree
               ? 'Launch offer: Pro is free right now. Get it once and keep it forever.'
-              : `Start with ${weeklyTrial ?? '3 days free'}. Log every practice drive, watch the state requirement fill up, and hand the DMV a clean, signed log.`}
+              : onboarding
+                ? `${showTrial(weeklyTrial) ? `Start with ${weeklyTrial}. ` : ''}Log every practice drive, watch your state\u2019s hours fill up, and hand the DMV a clean, signed log.`
+                : `One ${PERMIT_PASS} covers the whole permit, from the first drive to the road test. Unlimited drives and the DMV-ready PDF, yours to keep.`}
           </Text>
 
           <View style={styles.features}>
-            {FEATURES.map((f) => (
+            {features.map((f) => (
               <View key={f.title} style={styles.feature}>
-                <Text style={styles.featureIcon}>{f.icon}</Text>
+                <View style={styles.featureIcon}>
+                  <Icon name={f.icon} size={22} color={theme.accent} />
+                </View>
                 <View style={{ flex: 1 }}>
                   <View style={styles.featureTitleRow}>
                     <Text style={[styles.featureTitle, { color: theme.text }]}>{f.title}</Text>
@@ -203,19 +265,26 @@ export default function PaywallModal({ privacyUrl }: { privacyUrl: string }) {
                 const isAnnual = p.packageType === 'ANNUAL';
                 const isLifetime = p.packageType === 'LIFETIME';
                 const isWeekly = p.packageType === 'WEEKLY';
-                const title = isWeekly ? 'Weekly' : isAnnual ? 'Yearly' : isLifetime ? 'Lifetime' : p.product.title;
+                const title = isWeekly ? 'Weekly' : isAnnual ? 'Yearly' : isLifetime ? PERMIT_PASS : p.product.title;
+                const wTrial = showTrial(weeklyTrial);
+                const aTrial = showTrial(annualTrial);
                 // 3.1.2(c) on the row itself: trial length, then the price after it.
                 const line = isWeekly
-                  ? weeklyTrial
-                    ? `${weeklyTrial}, then ${p.product.priceString}/week`
+                  ? wTrial
+                    ? `${wTrial}, then ${p.product.priceString}/week`
                     : `${p.product.priceString}/week`
                   : isAnnual
-                    ? `${annualTrial ? `${annualTrial}, then ` : ''}${p.product.priceString}/year${annualPerMonth ? ` · ${annualPerMonth}` : ''}`
+                    ? `${aTrial ? `${aTrial}, then ` : ''}${p.product.priceString}/year${annualPerMonth ? ` · ${annualPerMonth}` : ''}`
                     : isLifetime
                       ? lifetimeFree
                         ? 'Free right now, keep forever'
-                        : 'Pay once, keep forever'
+                        : 'One-time, yours forever'
                       : '';
+                const tag = lifetimeFree
+                  ? isLifetime && 'LAUNCH OFFER'
+                  : onboarding
+                    ? isWeekly && 'MOST POPULAR'
+                    : isLifetime && 'BEST FOR A PERMIT';
                 return (
                   <Pressable
                     key={p.identifier}
@@ -231,13 +300,13 @@ export default function PaywallModal({ privacyUrl }: { privacyUrl: string }) {
                     <View style={{ flex: 1 }}>
                       <View style={styles.pkgTitleRow}>
                         <Text style={[styles.pkgTitle, { color: theme.text }]}>{title}</Text>
-                        {(lifetimeFree ? isLifetime : isWeekly) && (
+                        {tag ? (
                           <View style={[styles.popular, { backgroundColor: theme.accent }]}>
-                            <Text style={styles.popularText}>{lifetimeFree ? 'LAUNCH OFFER' : 'MOST POPULAR'}</Text>
+                            <Text style={[styles.popularText, { color: theme.onAccent }]}>{tag}</Text>
                           </View>
-                        )}
+                        ) : null}
                       </View>
-                      <Text style={[styles.pkgLine, { color: isWeekly || isAnnual || (isLifetime && lifetimeFree) ? theme.accent : theme.textSecondary }]}>
+                      <Text style={[styles.pkgLine, { color: theme.accent }]}>
                         {line}
                       </Text>
                       {isWeekly && weeklyPerYear && (
@@ -260,13 +329,13 @@ export default function PaywallModal({ privacyUrl }: { privacyUrl: string }) {
                 onPress={buy}
                 disabled={purchasing || !selected}
               />
-              {/* Copy lever 3: "No payment now" on trial tiers. */}
+              {/* Copy lever 3: "No payment now" on trial tiers (onboarding, eligible only). */}
               {selected?.packageType === 'LIFETIME' ? (
-                <Text style={[styles.noPayment, { color: theme.success }]}>
-                  {lifetimeFree ? '✓ Free, no subscription, yours for good' : '✓ One-time purchase, no subscription'}
-                </Text>
-              ) : selected?.product.introPrice?.price === 0 ? (
-                <Text style={[styles.noPayment, { color: theme.success }]}>✓ No payment now</Text>
+                <CheckLine color={theme.success}>
+                  {lifetimeFree ? 'Free, no subscription, yours for good' : 'One-time purchase, no subscription'}
+                </CheckLine>
+              ) : selected && showTrial(trialLabel(selected, trialEligible)) ? (
+                <CheckLine color={theme.success}>No payment now</CheckLine>
               ) : null}
             </View>
           )}
@@ -301,16 +370,24 @@ export default function PaywallModal({ privacyUrl }: { privacyUrl: string }) {
   );
 }
 
+function CheckLine({ color, children }: { color: string; children: React.ReactNode }) {
+  return (
+    <View style={styles.checkLine}>
+      <Icon name="check" size={15} color={color} strokeWidth={2.5} />
+      <Text style={[styles.noPayment, { color }]}>{children}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scroll: { padding: 24, paddingTop: 20, paddingBottom: 40 },
   close: { alignSelf: 'flex-end', padding: 4 },
-  closeText: { fontSize: 22 },
-  title: { fontSize: 28, fontWeight: fonts.weight.bold, letterSpacing: -0.5, marginTop: 8 },
+  title: { fontSize: 30, fontFamily: fonts.display, lineHeight: 34, marginTop: 8 },
   subtitle: { fontSize: 16, lineHeight: 23, marginTop: 8, marginBottom: 22 },
   features: { gap: 14, marginBottom: 24 },
   feature: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  featureIcon: { fontSize: 22 },
+  featureIcon: { width: 24, paddingTop: 1 },
   featureTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   featureTitle: { fontSize: 16, fontWeight: fonts.weight.semibold },
   featureSub: { fontSize: 14, lineHeight: 20, marginTop: 2 },
@@ -321,11 +398,12 @@ const styles = StyleSheet.create({
   pkgTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   pkgTitle: { fontSize: 16, fontWeight: fonts.weight.semibold },
   popular: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  popularText: { fontSize: 9, fontWeight: fonts.weight.bold, color: '#FFFFFF', letterSpacing: 0.5 },
+  popularText: { fontSize: 9, fontWeight: fonts.weight.bold, letterSpacing: 0.5 },
   pkgLine: { fontSize: 12, fontWeight: fonts.weight.semibold, marginTop: 3 },
   pkgEquiv: { fontSize: 11, marginTop: 2 },
-  pkgPrice: { fontSize: 17, fontWeight: fonts.weight.bold, marginLeft: 10 },
+  pkgPrice: { fontSize: 18, fontFamily: fonts.display, marginLeft: 10 },
   unavailable: { textAlign: 'center', marginVertical: 24, fontSize: 15 },
+  checkLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   noPayment: { fontSize: 13, textAlign: 'center', fontWeight: fonts.weight.semibold },
   legal: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 26, gap: 6 },
   legalText: { fontSize: 11, lineHeight: 15, textAlign: 'center' },

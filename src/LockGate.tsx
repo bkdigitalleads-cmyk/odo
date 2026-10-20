@@ -3,6 +3,7 @@ import { AppState as RNAppState, StyleSheet, Text, View } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useTheme, fonts } from './theme';
 import { PillButton } from './components';
+import Icon from './icons';
 import { useApp } from './state';
 
 /**
@@ -21,7 +22,7 @@ export default function LockGate({ children }: { children: React.ReactNode }) {
     setAuthInFlight(true);
     try {
       const res = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Unlock your journal',
+        promptMessage: 'Unlock your driving log',
       });
       if (res.success) setLocked(false);
     } finally {
@@ -54,7 +55,9 @@ export default function LockGate({ children }: { children: React.ReactNode }) {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      <Text style={styles.emoji}>🔒</Text>
+      <View style={styles.icon}>
+        <Icon name="lock" size={44} color={theme.accent} />
+      </View>
       <Text style={[styles.title, { color: theme.text }]}>Odo is locked</Text>
       <Text style={[styles.sub, { color: theme.textSecondary }]}>
         Your driving log is protected with Face ID.
@@ -68,7 +71,7 @@ export default function LockGate({ children }: { children: React.ReactNode }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-  emoji: { fontSize: 44, marginBottom: 12 },
-  title: { fontSize: 22, fontWeight: fonts.weight.bold },
+  icon: { marginBottom: 12 },
+  title: { fontSize: 24, fontFamily: fonts.heading },
   sub: { fontSize: 15, marginTop: 6, textAlign: 'center' },
 });

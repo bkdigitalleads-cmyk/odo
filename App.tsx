@@ -3,8 +3,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTheme, fonts } from './src/theme';
-import { AppProvider, useApp } from './src/state';
+import { useFonts } from 'expo-font';
+import { useTheme, fonts, FONT_FILES } from './src/theme';
+import Icon, { IconName } from './src/icons';
+import { AppProvider, useApp, ONBOARDED_KEY } from './src/state';
 import LockGate from './src/LockGate';
 import HomeScreen from './src/screens/Home';
 import ReportScreen from './src/screens/Report';
@@ -12,17 +14,18 @@ import SettingsScreen from './src/screens/Settings';
 import DriveFormModal from './src/screens/DriveForm';
 import PaywallModal from './src/screens/Paywall';
 import Onboarding from './src/screens/Onboarding';
-
-const ONBOARDED_KEY = 'odo.onboarded.v1';
+import Welcome, { TrialSteps } from './src/screens/Welcome';
+import { countDrives } from './src/db';
+import { maybeRequestReviewOnLaunch } from './src/reviews';
 
 const PRIVACY_URL = 'https://bkdigitalleads-cmyk.github.io/odo/privacy.html';
 
 type Tab = 'drives' | 'log' | 'settings';
 
-const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: 'drives', label: 'Drives', icon: '🚗' },
-  { key: 'log', label: 'Log', icon: '📄' },
-  { key: 'settings', label: 'Settings', icon: '⚙️' },
+const TABS: { key: Tab; label: string; icon: IconName }[] = [
+  { key: 'drives', label: 'Drives', icon: 'car' },
+  { key: 'log', label: 'Log', icon: 'log' },
+  { key: 'settings', label: 'Settings', icon: 'gear' },
 ];
 
 function Shell() {
@@ -31,38 +34,41 @@ function Shell() {
   const { ready, isPro, showPaywall, paywallVisible } = useApp();
   const [tab, setTab] = useState<Tab>('drives');
   const [onboarded, setOnboarded] = useState<boolean | null>(null);
-  // Onboarding order: paywall first, then the setup and attribution questions.
-  const [paywallShown, setPaywallShown] = useState(false);
+  // New installs: value screens, setup questions, trial and reminder screens, then the paywall.
+  const [step, setStep] = useState<'welcome' | 'setup' | 'trial' | 'paywall'>('welcome');
   const paywallOpened = useRef(false);
   const [formVisible, setFormVisible] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem(ONBOARDED_KEY)
-      .then((v) => setOnboarded(v === '1'))
-      .catch(() => setOnboarded(true)); // fail open: never trap the user
-  }, []);
+    if (!ready || onboarded !== null) return;
+    (async () => {
+      if ((await AsyncStorage.getItem(ONBOARDED_KEY)) === '1') return setOnboarded(true);
+      // Anyone who already has drives, or is Pro, has used Odo: no onboarding.
+      if (isPro || (await countDrives()) > 0) {
+        AsyncStorage.setItem(ONBOARDED_KEY, '1').catch(() => {});
+        return setOnboarded(true);
+      }
+      setOnboarded(false);
+    })().catch(() => setOnboarded(true)); // fail open: never trap the user
+  }, [ready, onboarded, isPro]);
 
-  // Paywall in onboarding, before anything else (Young, Gate 3).
-  useEffect(() => {
-    if (!ready || onboarded !== false || paywallOpened.current) return;
+  const openOnboardingPaywall = () => {
+    if (paywallOpened.current) return;
     paywallOpened.current = true;
-    if (isPro) {
-      setPaywallShown(true);
-      return;
-    }
+    setStep('paywall');
     showPaywall();
-  }, [ready, onboarded, isPro, showPaywall]);
-
-  // When the paywall closes (purchase or ✕), move on to the setup questions.
-  useEffect(() => {
-    if (paywallOpened.current && !paywallVisible) setPaywallShown(true);
-  }, [paywallVisible]);
+  };
 
   const finishOnboarding = () => {
     setOnboarded(true);
     AsyncStorage.setItem(ONBOARDED_KEY, '1').catch(() => {});
   };
+
+  // When the onboarding paywall closes (purchase or close button), onboarding is done.
+  useEffect(() => {
+    if (paywallOpened.current && !paywallVisible && onboarded === false) finishOnboarding();
+  }, [paywallVisible, onboarded]);
 
   const openNewDrive = () => {
     setEditingId(null);
@@ -81,14 +87,17 @@ function Shell() {
   if (!onboarded) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.bg, paddingTop: insets.top }}>
-        {paywallShown ? <Onboarding onDone={finishOnboarding} /> : null}
-        <PaywallModal privacyUrl={PRIVACY_URL} />
+        {step === 'welcome' && <Welcome onDone={() => setStep('setup')} />}
+        {step === 'setup' && <Onboarding onDone={() => setStep('trial')} />}
+        {step === 'trial' && <TrialSteps onDone={openOnboardingPaywall} />}
+        <PaywallModal privacyUrl={PRIVACY_URL} onboarding />
       </View>
     );
   }
 
   return (
     <LockGate>
+      <LaunchReview />
       <View style={{ flex: 1, backgroundColor: theme.bg, paddingTop: insets.top }}>
         <View style={{ flex: 1 }}>
           {tab === 'drives' && <HomeScreen onAddDrive={openNewDrive} onOpenDrive={openDrive} />}
@@ -115,9 +124,7 @@ function Shell() {
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
               >
-                <Text style={[styles.tabIcon, { opacity: active ? 1 : 0.45 }]}>
-                  {t.icon}
-                </Text>
+                <Icon name={t.icon} size={24} color={active ? theme.accent : theme.textFaint} />
                 <Text
                   style={[
                     styles.tabLabel,
@@ -141,7 +148,17 @@ function Shell() {
   );
 }
 
+/** Once per launch, after any Face ID unlock: the "later calendar day" rating trigger. */
+function LaunchReview() {
+  useEffect(() => {
+    maybeRequestReviewOnLaunch();
+  }, []);
+  return null;
+}
+
 export default function App() {
+  const [fontsLoaded, fontError] = useFonts(FONT_FILES);
+  if (!fontsLoaded && !fontError) return null;
   return (
     <SafeAreaProvider>
       <AppProvider>
@@ -159,6 +176,5 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   tabItem: { flex: 1, alignItems: 'center', gap: 2 },
-  tabIcon: { fontSize: 20 },
   tabLabel: { fontSize: 11, fontWeight: fonts.weight.medium },
 });

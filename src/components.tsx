@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, TextStyle, View, ViewStyle } from 'react-native';
 import { Theme, fonts } from './theme';
 
 export function Card({
@@ -38,7 +38,7 @@ export function PillButton({
   disabled?: boolean;
 }) {
   const bg = kind === 'primary' ? theme.accent : 'transparent';
-  const fg = kind === 'primary' ? '#FFFFFF' : theme.accent;
+  const fg = kind === 'primary' ? theme.onAccent : theme.accent;
   return (
     <Pressable
       onPress={onPress}
@@ -130,6 +130,68 @@ export function StarPicker({
         </Pressable>
       ))}
     </View>
+  );
+}
+
+/** Hours typed by a person: "12", "12.5" or "12,5". Null when empty or not a number. */
+export function parseHours(text: string): number | null {
+  const t = text.trim().replace(',', '.');
+  if (t === '') return null;
+  const n = Number(t);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/** Shows hours without trailing zeros: 12, 12.5, 12.25. */
+export function hoursText(n: number): string {
+  return String(Math.round(n * 100) / 100);
+}
+
+/**
+ * A number field that keeps what is typed and only reports it on blur or
+ * submit, so clearing it to retype never saves a wrong value in between.
+ * An empty or invalid entry goes back to the last saved value.
+ */
+export function NumberField({
+  value,
+  onCommit,
+  style,
+  placeholder,
+  placeholderTextColor,
+  decimals = false,
+  maxLength = 5,
+}: {
+  value: number;
+  onCommit: (n: number) => void;
+  style?: TextStyle | TextStyle[];
+  placeholder?: string;
+  placeholderTextColor?: string;
+  decimals?: boolean;
+  maxLength?: number;
+}) {
+  const [text, setText] = useState(hoursText(value));
+  useEffect(() => setText(hoursText(value)), [value]);
+  const commit = () => {
+    const n = parseHours(text);
+    if (n == null) {
+      setText(hoursText(value));
+      return;
+    }
+    onCommit(decimals ? n : Math.round(n));
+  };
+  return (
+    <TextInput
+      style={style}
+      value={text}
+      onChangeText={setText}
+      onBlur={commit}
+      onSubmitEditing={commit}
+      keyboardType={decimals ? 'decimal-pad' : 'number-pad'}
+      returnKeyType="done"
+      maxLength={maxLength}
+      placeholder={placeholder}
+      placeholderTextColor={placeholderTextColor}
+      selectTextOnFocus
+    />
   );
 }
 
