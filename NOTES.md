@@ -2,7 +2,8 @@
 
 Newest first. One entry per commit: date, version/build, what changed and why.
 
-- 2026-10-20: 1.0.6 build 10 (branch claude/charming-galileo-lu4qbw, PR, not merged). Scope Brian approved on Oct 19.
+- 2026-10-20: Recorded commit 099f09b in AUDIT.md and NOTES.md (docs only, no build).
+- 2026-10-20 (099f09b): 1.0.6 build 10 (branch claude/charming-galileo-lu4qbw, PR, not merged). Scope Brian approved on Oct 19.
   - Onboarding for new installs only (skipped when the install already has drives, already finished onboarding, or is Pro): 3 value screens rewritten as outcomes for parents, state picker, new "Already logged some hours?" step, "where did you hear about Odo", then the Attend 1.0.5 paywall sequence: "Try Odo Pro free" (only when RevenueCat says the Apple ID is trial-eligible), the reminder screen (asks notification permission), then the onboarding paywall (Weekly preselected, close X after 3 s, "Continue", "No payment now" only when eligible). Copied from Attend: src/trial.ts, src/reminder.ts, src/reviews.ts pattern, Welcome.tsx pattern, plugins/withoutPushEntitlement.js.
   - Starting hours: stored in settings as priorDayMin / priorNightMin (minutes), not as drives; SQLite schema unchanged. They count toward the goal on Home and the Log tab, print on the PDF and CSV as their own row "Hours logged before Odo (entered by parent)", and are editable in Settings, "Hours before Odo".
   - Free limit: 2 drives for new installs, 10 kept for anyone who installed earlier. Decided once on the first 1.0.6 launch (odo.freeDriveLimit.v1): an earlier install is one with odo.onboarded.v1, saved settings, or any drive. PDF and CSV stay Pro. Free users get "Preview my PDF": the log drawn in-app with a large SAMPLE watermark; its Share and Print buttons close the preview and open the paywall.
