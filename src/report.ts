@@ -7,9 +7,9 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getDrives, getStats, fmtHours } from './db';
+import { getDrives, getStats, fmtHours, Drive, PRIOR_HOURS_LABEL } from './db';
 import { getStateReq, CUSTOM_CODE } from './states';
-import { resolveGoal, Settings } from './state';
+import { resolveGoal, parseSettings, priorMinutes, Goal, SETTINGS_KEY } from './state';
 
 function esc(s: string): string {
   return s
@@ -28,71 +28,87 @@ function prettyDate(iso: string): string {
   });
 }
 
-async function loadSettings(): Promise<Settings> {
-  try {
-    const raw = await AsyncStorage.getItem('odo.settings.v1');
-    if (raw) {
-      return {
-        lockEnabled: false,
-        stateCode: '',
-        customTotalHours: null,
-        customNightHours: null,
-        driverName: '',
-        supervisorName: '',
-        ...JSON.parse(raw),
-      };
-    }
-  } catch {
-    // fall through to defaults
-  }
+export interface ReportData {
+  /** "October 20, 2026" */
+  today: string;
+  driverName: string;
+  /** State name, "Custom goal", or '' when none was picked. */
+  stateName: string;
+  goal: Goal;
+  /** False for the built-in 50/10 fallback, which is not anyone's real requirement. */
+  showGoal: boolean;
+  /** Hours from before Odo, entered by the parent. Zero when none. */
+  prior: { dayMin: number; nightMin: number; totalMin: number };
+  /** Dated drives, oldest first (paper-log order). */
+  drives: Drive[];
+  driveCount: number;
+  /** Totals including the hours from before Odo. */
+  totalMin: number;
+  nightMin: number;
+  dayMin: number;
+  /** Percent of the goal, 0 to 100. */
+  pct: number;
+}
+
+/** Everything the log shows, shared by the PDF and the in-app SAMPLE preview. */
+export async function buildReportData(): Promise<ReportData> {
+  const settings = parseSettings(await AsyncStorage.getItem(SETTINGS_KEY).catch(() => null));
+  const goal = resolveGoal(settings);
+  const drives = await getDrives();
+  const stats = await getStats();
+  const prior = priorMinutes(settings);
+  const stateReq = getStateReq(settings.stateCode);
+  const stateName =
+    settings.stateCode === CUSTOM_CODE ? 'Custom goal' : stateReq ? stateReq.name : '';
+  const totalMin = stats.totalMin + prior.totalMin;
   return {
-    lockEnabled: false,
-    stateCode: '',
-    customTotalHours: null,
-    customNightHours: null,
-    driverName: '',
-    supervisorName: '',
+    today: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    driverName: settings.driverName,
+    stateName,
+    goal,
+    showGoal: goal.source !== 'default',
+    prior,
+    drives: [...drives].reverse(),
+    driveCount: stats.driveCount,
+    totalMin,
+    nightMin: stats.nightMin + prior.nightMin,
+    dayMin: stats.dayMin + prior.dayMin,
+    pct: goal.totalHours > 0 ? Math.min(100, Math.round((totalMin / (goal.totalHours * 60)) * 100)) : 0,
   };
 }
 
 export async function buildReportHtml(): Promise<string> {
-  const settings = await loadSettings();
-  const goal = resolveGoal(settings);
-  const drives = await getDrives();
-  const stats = await getStats();
-  const stateReq = getStateReq(settings.stateCode);
-  const stateName =
-    settings.stateCode === CUSTOM_CODE
-      ? 'Custom goal'
-      : stateReq
-        ? stateReq.name
-        : '';
-  const today = new Date().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const r = await buildReportData();
+  const { goal, prior } = r;
 
-  const rows = [...drives]
-    .reverse()
+  const priorRow =
+    prior.totalMin > 0
+      ? `
+    <tr class="prior">
+      <td><b>${esc(PRIOR_HOURS_LABEL)}</b></td>
+      <td class="num">${fmtHours(prior.dayMin)}</td>
+      <td class="num">${prior.nightMin > 0 ? fmtHours(prior.nightMin) : ''}</td>
+      <td class="num"><b>${fmtHours(prior.totalMin)}</b></td>
+      <td colspan="3">Not individual drives. Total carried over from an earlier log.</td>
+    </tr>`
+      : '';
+
+  const rows = r.drives
     .map(
       (d) => `
     <tr>
       <td>${prettyDate(d.date)}</td>
       <td class="num">${fmtHours(d.durationMin - d.nightMin)}</td>
-      <td class="num">${d.nightMin > 0 ? fmtHours(d.nightMin) : '—'}</td>
+      <td class="num">${d.nightMin > 0 ? fmtHours(d.nightMin) : ''}</td>
       <td class="num"><b>${fmtHours(d.durationMin)}</b></td>
-      <td>${esc(d.weather || '—')}</td>
-      <td>${esc(d.roads ? d.roads.split(',').join(', ') : '—')}</td>
-      <td>${esc(d.supervisor || '—')}</td>
+      <td>${esc(d.weather || '')}</td>
+      <td>${esc(d.roads ? d.roads.split(',').join(', ') : '')}</td>
+      <td>${esc(d.supervisor || '')}</td>
     </tr>`
     )
     .join('');
 
-  const pct =
-    goal.totalHours > 0
-      ? Math.min(100, Math.round((stats.totalMin / (goal.totalHours * 60)) * 100))
-      : 0;
+  const pct = r.pct;
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8" />
@@ -113,6 +129,7 @@ export async function buildReportHtml(): Promise<string> {
   th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #5c6470; border-bottom: 2px solid #b07100; padding: 5px 6px; }
   td { border-bottom: 1px solid #e7e3d8; padding: 6px; font-size: 11.5px; vertical-align: top; }
   td.num { white-space: nowrap; }
+  .prior td { background: #f6f3ea; border-bottom: 2px solid #e3d9bd; }
   .totals td { border-top: 2px solid #b07100; border-bottom: none; font-weight: 700; font-size: 12px; }
   .cert { margin-top: 26px; border: 1px solid #d8d3c4; border-radius: 10px; padding: 14px 16px; font-size: 12px; line-height: 1.5; }
   .sig { display: flex; gap: 28px; margin-top: 26px; }
@@ -121,29 +138,31 @@ export async function buildReportHtml(): Promise<string> {
 </style></head>
 <body>
   <h1>Supervised Driving Practice Log</h1>
-  <div class="sub">Generated ${today} · Odo for iPhone · All data recorded on-device</div>
+  <div class="sub">Generated ${r.today} · Odo for iPhone · All data recorded on-device</div>
   <div class="who">
-    ${settings.driverName ? `Driver: <b>${esc(settings.driverName)}</b>` : 'Driver: ____________________'}
-    ${stateName ? ` &nbsp;·&nbsp; ${esc(stateName)}` : ''}
-    &nbsp;·&nbsp; Goal: ${goal.totalHours} hours${goal.nightHours > 0 ? ` (incl. ${goal.nightHours} at night)` : ''}
+    ${r.driverName ? `Driver: <b>${esc(r.driverName)}</b>` : 'Driver: ____________________'}
+    ${r.stateName ? ` &nbsp;·&nbsp; ${esc(r.stateName)}` : ''}
+    ${r.showGoal ? `&nbsp;·&nbsp; Goal: ${goal.totalHours} hours${goal.nightHours > 0 ? ` (incl. ${goal.nightHours} at night)` : ''}` : ''}
   </div>
   <div class="summary">
-    <div class="box"><div class="v">${fmtHours(stats.totalMin)}</div><div class="l">total supervised driving</div></div>
-    <div class="box"><div class="v">${fmtHours(stats.nightMin)}</div><div class="l">of it at night</div></div>
-    <div class="box"><div class="v">${stats.driveCount}</div><div class="l">practice drives</div></div>
+    <div class="box"><div class="v">${fmtHours(r.totalMin)}</div><div class="l">total supervised driving</div></div>
+    <div class="box"><div class="v">${fmtHours(r.nightMin)}</div><div class="l">of it at night</div></div>
+    <div class="box"><div class="v">${r.driveCount}</div><div class="l">practice drives logged in Odo</div></div>
   </div>
-  <div class="goalbar"><i></i></div>
-  <div class="goalpct">${pct}% of the ${goal.totalHours}-hour goal</div>
+  ${prior.totalMin > 0 ? `<div class="goalpct">Totals include ${fmtHours(prior.totalMin)} logged before Odo, entered by a parent and shown as its own row below.</div>` : ''}
+  ${r.showGoal ? `<div class="goalbar"><i></i></div>
+  <div class="goalpct">${pct}% of the ${goal.totalHours}-hour goal</div>` : ''}
   <table>
     <tr>
       <th>Date</th><th>Day</th><th>Night</th><th>Total</th><th>Weather</th><th>Roads</th><th>Supervisor</th>
     </tr>
+    ${priorRow}
     ${rows}
     <tr class="totals">
       <td>Totals</td>
-      <td class="num">${fmtHours(stats.dayMin)}</td>
-      <td class="num">${fmtHours(stats.nightMin)}</td>
-      <td class="num">${fmtHours(stats.totalMin)}</td>
+      <td class="num">${fmtHours(r.dayMin)}</td>
+      <td class="num">${fmtHours(r.nightMin)}</td>
+      <td class="num">${fmtHours(r.totalMin)}</td>
       <td colspan="3"></td>
     </tr>
   </table>
@@ -155,7 +174,7 @@ export async function buildReportHtml(): Promise<string> {
       <div>Date</div>
     </div>
   </div>
-  <div class="footer">Logged with Odo — verify current requirements with your state's DMV before your road test.</div>
+  <div class="footer">Logged with Odo. Verify current requirements with your state's DMV before your road test.</div>
 </body></html>`;
 }
 

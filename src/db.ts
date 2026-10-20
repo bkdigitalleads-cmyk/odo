@@ -212,13 +212,34 @@ export async function deleteAllData(): Promise<void> {
   await db.execAsync('DELETE FROM drives;');
 }
 
-/** CSV export (RFC-4180), oldest first — matches paper-log order. */
-export async function exportCsv(): Promise<string> {
+/** Label for hours a parent entered from before Odo, on the PDF and CSV. */
+export const PRIOR_HOURS_LABEL = 'Hours logged before Odo (entered by parent)';
+
+/**
+ * CSV export (RFC-4180), oldest first, matching paper-log order. Hours from
+ * before Odo come first, as their own row with the label where the date goes.
+ */
+export async function exportCsv(prior?: { dayMin: number; nightMin: number }): Promise<string> {
   const drives = await getDrives();
   const q = (s: string) => '"' + s.replace(/"/g, '""') + '"';
   const lines = [
     'date,duration_minutes,night_minutes,day_minutes,weather,roads,supervisor,miles,notes',
   ];
+  if (prior && prior.dayMin + prior.nightMin > 0) {
+    lines.push(
+      [
+        q(PRIOR_HOURS_LABEL),
+        String(prior.dayMin + prior.nightMin),
+        String(prior.nightMin),
+        String(prior.dayMin),
+        q(''),
+        q(''),
+        q(''),
+        '',
+        q(''),
+      ].join(',')
+    );
+  }
   for (const d of [...drives].reverse()) {
     lines.push(
       [
@@ -235,6 +256,13 @@ export async function exportCsv(): Promise<string> {
     );
   }
   return lines.join('\r\n');
+}
+
+/** Today's calendar date, YYYY-MM-DD (local). */
+export function todayIso(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
 /** "3h 45m" style formatting used across the app. */

@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useTheme, fonts, Theme } from '../theme';
+import { useTheme, fonts } from '../theme';
 import { Card } from '../components';
-import { useApp, FREE_DRIVE_LIMIT } from '../state';
+import Icon from '../icons';
+import Rings from '../Rings';
+import { useApp, priorMinutes } from '../state';
 import { getDrives, getStats, Drive, Stats, fmtHours } from '../db';
 import { getStateReq } from '../states';
 
@@ -14,7 +16,7 @@ export default function HomeScreen({
   onOpenDrive: (id: number) => void;
 }) {
   const theme = useTheme();
-  const { isPro, showPaywall, dataVersion, goal, settings } = useApp();
+  const { isPro, showPaywall, dataVersion, goal, settings, freeDriveLimit } = useApp();
   const [drives, setDrives] = useState<Drive[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
 
@@ -27,9 +29,8 @@ export default function HomeScreen({
     load();
   }, [load, dataVersion]);
 
-  const atFreeLimit = !isPro && (stats?.driveCount ?? 0) >= FREE_DRIVE_LIMIT;
-  const nearFreeLimit =
-    !isPro && !atFreeLimit && (stats?.driveCount ?? 0) >= FREE_DRIVE_LIMIT - 3;
+  const driveCount = stats?.driveCount ?? 0;
+  const atFreeLimit = !isPro && driveCount >= freeDriveLimit;
 
   const handleAdd = () => {
     if (atFreeLimit) {
@@ -39,11 +40,19 @@ export default function HomeScreen({
     onAddDrive();
   };
 
+  // Hours from before Odo count toward the goal like any drive.
+  const prior = priorMinutes(settings);
   const totalGoalMin = goal.totalHours * 60;
   const nightGoalMin = goal.nightHours * 60;
-  const totalMin = stats?.totalMin ?? 0;
-  const nightMin = stats?.nightMin ?? 0;
+  const totalMin = (stats?.totalMin ?? 0) + prior.totalMin;
+  const nightMin = (stats?.nightMin ?? 0) + prior.nightMin;
   const stateName = getStateReq(settings.stateCode)?.name;
+  const goalLabel =
+    goal.source === 'state' && stateName
+      ? stateName
+      : goal.source === 'custom'
+        ? 'Custom goal'
+        : 'Pick your state in Settings';
 
   const subtitle = (d: Drive): string => {
     const parts: string[] = [fmtHours(d.durationMin)];
@@ -72,10 +81,12 @@ export default function HomeScreen({
             </Text>
           </View>
           <View style={styles.itemBody}>
-            <Text style={[styles.itemName, { color: theme.text }]} numberOfLines={1}>
-              {fmtHours(item.durationMin)} drive
-              {item.nightMin > 0 ? '  🌙' : ''}
-            </Text>
+            <View style={styles.itemNameRow}>
+              <Text style={[styles.itemName, { color: theme.text }]} numberOfLines={1}>
+                {fmtHours(item.durationMin)} drive
+              </Text>
+              {item.nightMin > 0 && <Icon name="moon" size={15} color={theme.night} />}
+            </View>
             <Text style={[styles.itemMeta, { color: theme.textFaint }]} numberOfLines={1}>
               {subtitle(item)}
             </Text>
@@ -95,53 +106,56 @@ export default function HomeScreen({
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View>
-            <Text style={[styles.brand, { color: theme.accent }]}>Odo</Text>
-            <Card theme={theme} style={styles.heroCard}>
-              <Text style={[styles.heroValue, { color: theme.text }]}>
-                {fmtHours(totalMin)}
-              </Text>
-              <Text style={[styles.heroLabel, { color: theme.textSecondary }]}>
-                of {goal.totalHours}h supervised driving
-                {goal.source === 'state' && stateName ? ` · ${stateName}` : ''}
-                {goal.source === 'custom' ? ' · custom goal' : ''}
-              </Text>
-              <ProgressBar
-                theme={theme}
-                value={totalMin}
-                max={totalGoalMin}
-                style={{ marginTop: 12 }}
-              />
-              {nightGoalMin > 0 && (
-                <View style={{ alignSelf: 'stretch', marginTop: 12 }}>
-                  <View style={styles.nightRow}>
-                    <Text style={[styles.nightLabel, { color: theme.textSecondary }]}>
-                      🌙 Night driving
-                    </Text>
-                    <Text style={[styles.nightValue, { color: theme.textSecondary }]}>
-                      {fmtHours(nightMin)} / {goal.nightHours}h
-                    </Text>
-                  </View>
-                  <ProgressBar
-                    theme={theme}
-                    value={nightMin}
-                    max={nightGoalMin}
-                    style={{ marginTop: 6 }}
-                  />
-                </View>
+            <View style={styles.topRow}>
+              <Text style={[styles.brand, { color: theme.accent }]}>ODO</Text>
+              {!isPro && (
+                <Pressable
+                  onPress={showPaywall}
+                  hitSlop={8}
+                  style={({ pressed }) => [
+                    styles.proBtn,
+                    { borderColor: theme.accent, opacity: pressed ? 0.7 : 1 },
+                  ]}
+                  accessibilityLabel="Get Odo Pro"
+                >
+                  <Text style={[styles.proBtnText, { color: theme.accent }]}>PRO</Text>
+                </Pressable>
               )}
-              <View style={styles.heroChips}>
-                <Text style={[styles.heroChip, { color: theme.textFaint }]}>
-                  {stats?.driveCount ?? 0} {(stats?.driveCount ?? 0) === 1 ? 'drive' : 'drives'}
-                </Text>
-                {(stats?.totalMiles ?? 0) > 0 && (
-                  <Text style={[styles.heroChip, { color: theme.textFaint }]}>
-                    {(stats?.totalMiles ?? 0).toFixed(0)} mi
-                  </Text>
-                )}
-                {totalMin >= totalGoalMin && totalGoalMin > 0 && (
-                  <Text style={[styles.heroChip, { color: theme.success }]}>Goal reached 🎉</Text>
+            </View>
+
+            <Card theme={theme} style={styles.heroCard}>
+              <Rings
+                theme={theme}
+                totalMin={totalMin}
+                totalGoalMin={totalGoalMin}
+                nightMin={nightMin}
+                nightGoalMin={nightGoalMin}
+              />
+              <View style={styles.legend}>
+                <Legend
+                  color={theme.lane}
+                  label="Total"
+                  value={`${fmtHours(totalMin)} of ${goal.totalHours}h`}
+                />
+                {nightGoalMin > 0 && (
+                  <Legend
+                    color={theme.night}
+                    label="Night"
+                    value={`${fmtHours(nightMin)} of ${goal.nightHours}h`}
+                  />
                 )}
               </View>
+              <Text style={[styles.goalLabel, { color: theme.textFaint }]}>
+                {goalLabel}
+                {'  ·  '}
+                {driveCount} {driveCount === 1 ? 'drive' : 'drives'}
+                {(stats?.totalMiles ?? 0) > 0 ? `  ·  ${(stats?.totalMiles ?? 0).toFixed(0)} mi` : ''}
+              </Text>
+              {prior.totalMin > 0 && (
+                <Text style={[styles.goalLabel, { color: theme.textFaint, marginTop: 2 }]}>
+                  Includes {fmtHours(prior.totalMin)} logged before Odo
+                </Text>
+              )}
             </Card>
 
             {!isPro && (
@@ -149,8 +163,8 @@ export default function HomeScreen({
                 <Card theme={theme} style={{ ...styles.limitCard, backgroundColor: theme.accentSoft }}>
                   <Text style={[styles.limitText, { color: theme.accent }]}>
                     {atFreeLimit
-                      ? `Free plan is full (${FREE_DRIVE_LIMIT} drives). Go Pro for unlimited →`
-                      : `${FREE_DRIVE_LIMIT - (stats?.driveCount ?? 0)} free drives left. Go Pro for unlimited →`}
+                      ? `You've used your ${freeDriveLimit} free drives. Get Pro to keep logging.`
+                      : `${freeDriveLimit - driveCount} free ${freeDriveLimit - driveCount === 1 ? 'drive' : 'drives'} left. Get Pro for unlimited.`}
                   </Text>
                 </Card>
               </Pressable>
@@ -160,11 +174,13 @@ export default function HomeScreen({
         }
         ListEmptyComponent={
           <Card theme={theme} style={styles.emptyCard}>
-            <Text style={styles.emptyEmoji}>🚗</Text>
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>Log your first drive</Text>
+            <View style={[styles.emptyBadge, { backgroundColor: theme.asphalt }]}>
+              <Icon name="car" size={30} color={theme.lane} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>First drive? Let's log it.</Text>
             <Text style={[styles.emptyBody, { color: theme.textSecondary }]}>
-              Every practice drive counts toward the license. Tap ＋ after you park —
-              date, minutes, and night time are all it takes.
+              Buckle up, drive, park. Then tap the + and add the minutes. Every drive moves you
+              closer to the license.
             </Text>
           </Card>
         }
@@ -177,64 +193,36 @@ export default function HomeScreen({
         ]}
         accessibilityLabel="Log a drive"
       >
-        <Text style={[styles.fabPlus, { color: theme.isDark ? '#15171A' : '#FFFFFF' }]}>＋</Text>
+        <Icon name="plus" size={28} color={theme.onAccent} strokeWidth={2.6} />
       </Pressable>
     </View>
   );
 }
 
-function ProgressBar({
-  theme,
-  value,
-  max,
-  style,
-}: {
-  theme: Theme;
-  value: number;
-  max: number;
-  style?: object;
-}) {
-  const pct = max > 0 ? Math.min(1, value / max) : 0;
+function Legend({ color, label, value }: { color: string; label: string; value: string }) {
+  const theme = useTheme();
   return (
-    <View
-      style={[
-        styles.barTrack,
-        { backgroundColor: theme.cardAlt },
-        style,
-      ]}
-      accessibilityRole="progressbar"
-    >
-      <View
-        style={[
-          styles.barFill,
-          {
-            backgroundColor: pct >= 1 ? theme.success : theme.accent,
-            width: `${Math.round(pct * 100)}%`,
-          },
-        ]}
-      />
+    <View style={styles.legendItem}>
+      <View style={[styles.legendSwatch, { backgroundColor: color }]} />
+      <Text style={[styles.legendLabel, { color: theme.textSecondary }]}>{label}</Text>
+      <Text style={[styles.legendValue, { color: theme.text }]}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   list: { padding: 20, paddingBottom: 120 },
-  brand: { fontSize: 15, fontWeight: fonts.weight.bold, marginBottom: 8, letterSpacing: 0.3 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  brand: { fontSize: 22, fontFamily: fonts.display, letterSpacing: 2 },
+  proBtn: { borderWidth: 1.5, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3 },
+  proBtnText: { fontSize: 13, fontFamily: fonts.display, letterSpacing: 1.5 },
   heroCard: { alignItems: 'center', paddingVertical: 22 },
-  heroValue: { fontSize: 44, fontWeight: fonts.weight.bold, letterSpacing: -1 },
-  heroLabel: { fontSize: 13, fontWeight: fonts.weight.medium, marginTop: 2, textAlign: 'center' },
-  nightRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  nightLabel: { fontSize: 13, fontWeight: fonts.weight.medium },
-  nightValue: { fontSize: 13, fontWeight: fonts.weight.medium },
-  heroChips: { flexDirection: 'row', gap: 14, marginTop: 14 },
-  heroChip: { fontSize: 13, fontWeight: fonts.weight.medium },
-  barTrack: {
-    alignSelf: 'stretch',
-    height: 10,
-    borderRadius: 5,
-    overflow: 'hidden',
-  },
-  barFill: { height: '100%', borderRadius: 5 },
+  legend: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 18 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendSwatch: { width: 14, height: 5, borderRadius: 2 },
+  legendLabel: { fontSize: 13, fontWeight: fonts.weight.medium },
+  legendValue: { fontSize: 15, fontFamily: fonts.heading },
+  goalLabel: { fontSize: 12, fontWeight: fonts.weight.medium, marginTop: 10, textAlign: 'center' },
   limitCard: { marginTop: 10, paddingVertical: 12, borderWidth: 0 },
   limitText: { fontSize: 14, fontWeight: fonts.weight.semibold, textAlign: 'center' },
   itemCard: { marginBottom: 10, padding: 12 },
@@ -246,14 +234,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dateBadgeDay: { fontSize: 18, fontWeight: fonts.weight.bold },
+  dateBadgeDay: { fontSize: 20, lineHeight: 22, fontFamily: fonts.display },
   dateBadgeMon: { fontSize: 10, fontWeight: fonts.weight.semibold, letterSpacing: 0.5 },
   itemBody: { flex: 1 },
+  itemNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   itemName: { fontSize: 16, fontWeight: fonts.weight.semibold },
   itemMeta: { fontSize: 13, marginTop: 2 },
   emptyCard: { alignItems: 'center', paddingVertical: 30 },
-  emptyEmoji: { fontSize: 40, marginBottom: 8 },
-  emptyTitle: { fontSize: 18, fontWeight: fonts.weight.bold },
+  emptyBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: { fontSize: 20, fontFamily: fonts.heading },
   emptyBody: { fontSize: 14, textAlign: 'center', marginTop: 6, lineHeight: 20 },
   fab: {
     position: 'absolute',
@@ -270,5 +266,4 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 5,
   },
-  fabPlus: { fontSize: 30, lineHeight: 34, fontWeight: fonts.weight.semibold },
 });
