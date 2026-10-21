@@ -48,7 +48,7 @@ export const STATE_REQS: StateReq[] = [
   { code: 'MD', name: 'Maryland', totalHours: 60, nightHours: 10 },
   { code: 'MA', name: 'Massachusetts', totalHours: 40, nightHours: 0 },
   { code: 'MI', name: 'Michigan', totalHours: 50, nightHours: 10 },
-  { code: 'MN', name: 'Minnesota', totalHours: 40, nightHours: 15 },
+  { code: 'MN', name: 'Minnesota', totalHours: 50, nightHours: 15, note: '40 hours if a parent or guardian takes the 90-minute parent awareness class.' },
   { code: 'MS', name: 'Mississippi', totalHours: null, nightHours: 0, note: 'No statewide hour minimum. Set your own goal.' },
   { code: 'MO', name: 'Missouri', totalHours: 40, nightHours: 10 },
   { code: 'MT', name: 'Montana', totalHours: 50, nightHours: 10 },

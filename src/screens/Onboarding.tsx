@@ -102,7 +102,12 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
                 },
               ]}
             >
-              <Text style={[styles.stateName, { color: theme.text }]}>{item.name}</Text>
+              <View style={styles.stateNameCol}>
+                <Text style={[styles.stateName, { color: theme.text }]}>{item.name}</Text>
+                {getStateReq(item.code)?.note ? (
+                  <Text style={[styles.stateNote, { color: theme.textFaint }]}>{getStateReq(item.code)?.note}</Text>
+                ) : null}
+              </View>
               {item.code === CUSTOM_CODE ? null : item.totalHours != null ? (
                 <View style={styles.stateReqRow}>
                   <Text style={[styles.stateReq, { color: theme.textFaint }]}>{item.totalHours}h</Text>
@@ -266,7 +271,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 8,
   },
+  stateNameCol: { flex: 1, paddingRight: 10 },
   stateName: { fontSize: 16, fontWeight: fonts.weight.medium },
+  stateNote: { fontSize: 12, lineHeight: 16, marginTop: 2 },
   stateReqRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   stateReq: { fontSize: 13 },
   centerWrap: { flex: 1, justifyContent: 'center', paddingHorizontal: 28 },

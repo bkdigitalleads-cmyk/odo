@@ -7,7 +7,7 @@ import { useFonts } from 'expo-font';
 import { useTheme, fonts, FONT_FILES } from './src/theme';
 import Icon, { IconName } from './src/icons';
 import { AppProvider, useApp, ONBOARDED_KEY } from './src/state';
-import LockGate from './src/LockGate';
+import LockGate, { useLocked } from './src/LockGate';
 import HomeScreen from './src/screens/Home';
 import ReportScreen from './src/screens/Report';
 import SettingsScreen from './src/screens/Settings';
@@ -150,9 +150,11 @@ function Shell() {
 
 /** Once per launch, after any Face ID unlock: the "later calendar day" rating trigger. */
 function LaunchReview() {
+  // The app now stays mounted under the lock screen, so wait for the unlock.
+  const locked = useLocked();
   useEffect(() => {
-    maybeRequestReviewOnLaunch();
-  }, []);
+    if (!locked) maybeRequestReviewOnLaunch();
+  }, [locked]);
   return null;
 }
 

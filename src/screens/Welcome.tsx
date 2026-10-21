@@ -49,11 +49,12 @@ async function loadTrialOffer(): Promise<TrialOffer | null> {
   const off = await getOffering();
   if (!off) return null;
   if (off.lifetime && off.lifetime.product.price === 0) return null;
-  const pkg = off.weekly ?? off.annual;
+  // Weekly is the only plan with a trial, and Yearly is hidden from 1.0.7.
+  const pkg = off.weekly;
   if (!pkg) return null;
   const label = trialLabel(pkg, await getTrialEligibleIds([pkg]));
   if (!label) return null;
-  return { label, then: `${pkg.product.priceString}/${pkg === off.weekly ? 'week' : 'year'}` };
+  return { label, then: `${pkg.product.priceString}/week` };
 }
 
 /** Starts the eligibility check early; it is ready long before the trial screen. */

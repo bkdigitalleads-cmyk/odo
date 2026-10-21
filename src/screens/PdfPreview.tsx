@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, fonts } from '../theme';
 import Icon from '../icons';
 import { useApp } from '../state';
+import { LockOverlay } from '../LockGate';
 import { buildReportData, ReportData } from '../report';
 import { fmtHours, PRIOR_HOURS_LABEL } from '../db';
 
@@ -91,6 +92,7 @@ export default function PdfPreview({
           <BarButton label="Print" icon="print" onPress={onLocked} />
         </View>
       </View>
+      <LockOverlay />
     </Modal>
   );
 }

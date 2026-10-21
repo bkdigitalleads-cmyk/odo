@@ -54,7 +54,9 @@ export default function SettingsScreen() {
   };
 
   const onToggleLock = async () => {
-    if (!isPro) {
+    // Pro is needed to turn the lock on, never to turn it off, so a lapsed
+    // trial or subscription can't trap the log behind it (AUDIT 5).
+    if (!isPro && !settings.lockEnabled) {
       showPaywall();
       return;
     }
@@ -239,7 +241,7 @@ export default function SettingsScreen() {
           style={[styles.nameInput, { color: theme.text }]}
           value={settings.driverName}
           onChangeText={(v) => updateSettings({ driverName: v })}
-          placeholder="Jordan Kershner"
+          placeholder="Alex"
           placeholderTextColor={theme.textFaint}
         />
         <Text style={[styles.customLabel, { color: theme.textSecondary, marginTop: 12 }]}>
@@ -332,15 +334,22 @@ export default function SettingsScreen() {
                     { borderBottomColor: theme.border },
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.rowText,
-                      { color: active ? theme.accent : theme.text },
-                      active && { fontWeight: fonts.weight.bold },
-                    ]}
-                  >
-                    {item.name}
-                  </Text>
+                  <View style={styles.stateNameCol}>
+                    <Text
+                      style={[
+                        styles.rowText,
+                        { color: active ? theme.accent : theme.text },
+                        active && { fontWeight: fonts.weight.bold },
+                      ]}
+                    >
+                      {item.name}
+                    </Text>
+                    {getStateReq(item.code)?.note ? (
+                      <Text style={[styles.goalNote, { color: theme.textFaint, marginTop: 2 }]}>
+                        {getStateReq(item.code)?.note}
+                      </Text>
+                    ) : null}
+                  </View>
                   <Text style={[styles.stateReqText, { color: theme.textFaint }]}>
                     {item.code === CUSTOM_CODE
                       ? ''
@@ -408,5 +417,6 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  stateNameCol: { flex: 1, paddingRight: 10 },
   stateReqText: { fontSize: 13 },
 });

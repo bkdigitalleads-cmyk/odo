@@ -7,18 +7,27 @@
 <meta name="description" content="Odo is a supervised driving hours tracker for teens with learner permits. Log every practice drive, track day and night hours against your state's requirement, and export a DMV-ready PDF log with signature lines.">
 <link rel="canonical" href="https://bkdigitalleads-cmyk.github.io/odo/">
 <meta property="og:title" content="Driving Hours Log: Teen Permit. Supervised Driving Hours Tracker for iPhone">
-<meta property="og:description" content="Track supervised driving hours toward your license and export a DMV-ready practice log PDF. Fully offline, no account.">
+<meta property="og:description" content="Track supervised driving hours toward your license and export a DMV-ready practice log PDF. Works offline, anywhere you drive.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://bkdigitalleads-cmyk.github.io/odo/">
+<meta property="og:site_name" content="Odo: Driving Hours Log">
+<meta property="og:image" content="https://bkdigitalleads-cmyk.github.io/odo/assets/icon.png">
+<meta property="og:image:alt" content="Odo app icon">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Driving Hours Log: Teen Permit. Supervised Driving Hours Tracker for iPhone">
+<meta name="twitter:description" content="Track supervised driving hours toward your license and export a DMV-ready practice log PDF. Works offline, anywhere you drive.">
+<link rel="apple-touch-icon" href="assets/icon.png">
+<meta name="apple-itunes-app" content="app-id=6804463602">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Driving Hours Log: Teen Permit","operatingSystem":"iOS","applicationCategory":"UtilitiesApplication","description":"Supervised driving practice log for teens with learner permits. Tracks total and night hours against state requirements and exports a DMV-style PDF log with signature lines.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"url":"https://apps.apple.com/us/app/id6804463602"}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Driving Hours Log: Teen Permit","alternateName":"Odo","operatingSystem":"iOS","applicationCategory":"EducationalApplication","description":"Supervised driving practice log for teens with learner permits. Tracks total and night hours against state requirements, counts hours logged before the app, and exports a DMV-style PDF log with signature lines. Works offline, anywhere you drive.","image":"https://bkdigitalleads-cmyk.github.io/odo/assets/icon.png","offers":{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Free download. The first 2 drives are free; Odo Pro unlocks unlimited drives and the PDF and CSV export."},"url":"https://apps.apple.com/us/app/id6804463602","downloadUrl":"https://apps.apple.com/us/app/id6804463602","publisher":{"@type":"Person","name":"Brian Kershner"}}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
-{"@type":"Question","name":"How many supervised driving hours does my state require?","acceptedAnswer":{"@type":"Answer","text":"Most US states require 40 to 60 supervised practice hours before a teen can take the road test, and most require 10 or more of those hours at night. Odo has the requirement for all 50 states and DC built in, so your progress bar always measures against your state's real numbers."}},
+{"@type":"Question","name":"How many supervised driving hours does my state require?","acceptedAnswer":{"@type":"Answer","text":"Most US states require 40 to 60 supervised practice hours before a teen can take the road test, and most require 10 or more of those hours at night. Odo has the requirement for all 50 states and DC built in, so your progress always measures against your state's real numbers."}},
 {"@type":"Question","name":"How do I prove my practice hours to the DMV?","acceptedAnswer":{"@type":"Answer","text":"Many states ask for a signed practice log when you apply for the road test. Odo exports a DMV-style PDF with every drive listed by date, duration, day or night, and conditions, plus signature lines for the supervising driver."}},
-{"@type":"Question","name":"Do night driving hours count separately?","acceptedAnswer":{"@type":"Answer","text":"Yes. Most states require a minimum number of the total practice hours to happen at night. Odo tracks night hours on their own progress bar so you always know both numbers."}},
-{"@type":"Question","name":"Is my driving log private?","acceptedAnswer":{"@type":"Answer","text":"Completely. Odo stores everything on your iPhone. There is no account, no cloud, and no tracking."}}
+{"@type":"Question","name":"Do night driving hours count separately?","acceptedAnswer":{"@type":"Answer","text":"Yes. Most states require a minimum number of the total practice hours to happen at night. Odo tracks night hours on their own progress ring so you always know both numbers."}},
+{"@type":"Question","name":"Does Odo work without a signal?","acceptedAnswer":{"@type":"Answer","text":"Yes. Odo works offline, anywhere you drive, and keeps the log on your iPhone. Export a copy as a PDF or CSV whenever you like."}},
+{"@type":"Question","name":"Is it free?","acceptedAnswer":{"@type":"Answer","text":"Your first 2 drives are free, and you can preview your DMV log before you pay. Odo Pro unlocks unlimited drives and the PDF and CSV export. The Permit Pass is a one-time purchase that covers the whole permit, and a weekly plan is also available."}}
 ]}
 </script>
 <style>
@@ -46,27 +55,28 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid #2a2a2a;color:#8f8a
 <p><a class="cta" href="https://apps.apple.com/us/app/id6804463602">Download Odo on the App Store</a></p>
 
 <h2>Why paper practice logs fail</h2>
-<p>The crumpled sheet in the glovebox always loses a few drives, nobody remembers which ones were at night, and the week before the road test turns into guesswork. Odo replaces it with a two-tap log: park, tap, logged — date, duration, day or night, and weather captured in seconds.</p>
+<p>The crumpled sheet in the glovebox always loses a few drives, nobody remembers which ones were at night, and the week before the road test turns into guesswork. Odo replaces it with a two-tap log: park, tap, logged. Date, duration, day or night, and weather are captured in seconds.</p>
 
 <h2>How many hours does your state require?</h2>
 <p>Every state sets its own number, from none at all to 70 hours, and most want 10 or more at night. See the <a href="states/">supervised driving hours by state</a> table, or jump straight to <a href="states/california.html">California</a>, <a href="states/texas.html">Texas</a>, <a href="states/florida.html">Florida</a>, <a href="states/new-york.html">New York</a>, <a href="states/pennsylvania.html">Pennsylvania</a> or <a href="states/new-jersey.html">New Jersey</a>.</p>
 
 <h2>Built for permit hours, not generic mileage</h2>
-<div class="feature"><b>Your state's rules, built in.</b> All 50 states + DC, with total and night-hour requirements. Pick your state, and the progress bars measure against the real numbers.</div>
+<div class="feature"><b>Your state's rules, built in.</b> All 50 states + DC, with total and night-hour requirements. Pick your state, and two progress rings measure against the real numbers.</div>
 <div class="feature"><b>Night hours tracked separately.</b> Because "15 of the 50 at night" is the part everyone loses track of.</div>
 <div class="feature"><b>A practice timer that survives the drive.</b> Start it when you pull out; it keeps counting even if the phone locks.</div>
 <div class="feature"><b>DMV-style PDF export.</b> Every drive listed with dates and durations, totals against your goal, and signature lines for the supervising driver. CSV export too.</div>
-<div class="feature"><b>Private by design.</b> No account, no cloud, no tracking — the log never leaves the iPhone.</div>
+<div class="feature"><b>Already started? Bring your hours.</b> Kept a paper log or used another app? Enter your starting day and night hours. They count toward the goal and print on the PDF as their own clearly labeled line.</div>
+<div class="feature"><b>Works offline, anywhere you drive.</b> Back roads, parking garages, no signal: the log keeps working and stays on your iPhone.</div>
 
 <h2>Free printable driving hours log</h2>
 <p>Need paper for the glovebox? <a href="driving-hours-log-sheet.pdf">Download the free supervised driving log sheet (PDF)</a>: 26 drives per page with date, start and end, minutes, day or night, weather and supervisor initials, plus a totals line. Print as many as you like. The app keeps the same log for you and does the adding up.</p>
 
 <h2>Frequently asked questions</h2>
 <div class="faq">
-<p><b>How many supervised driving hours does my state require?</b><br>Most states require 40–60 supervised hours before the road test, usually with 10 or more at night. Odo ships with the requirement for every state and DC, so your progress bar is measuring the right target from day one.</p>
-<p><b>How do I prove my practice hours to the DMV?</b><br>Many states ask for a signed log when you schedule the road test. Odo's PDF export lists every drive by date, duration, day/night, and conditions, with totals and supervisor signature lines — print it or email it straight from the app.</p>
-<p><b>Do night hours count separately?</b><br>Yes — and Odo gives them their own progress bar so you're never surprised at the end.</p>
-<p><b>Is it free?</b><br>Your first 10 drives are free. Odo Pro (one-time purchase or yearly) unlocks unlimited drives and PDF/CSV export.</p>
+<p><b>How many supervised driving hours does my state require?</b><br>Most states require 40 to 60 supervised hours before the road test, usually with 10 or more at night. Odo ships with the requirement for every state and DC, so your progress is measured against the right target from day one.</p>
+<p><b>How do I prove my practice hours to the DMV?</b><br>Many states ask for a signed log when you schedule the road test. Odo's PDF export lists every drive by date, duration, day/night, and conditions, with totals and supervisor signature lines. Print it or email it straight from the app.</p>
+<p><b>Do night hours count separately?</b><br>Yes, and Odo gives them their own progress ring so you're never surprised at the end.</p>
+<p><b>Is it free?</b><br>Your first 2 drives are free, and you can preview your DMV log before you pay. Odo Pro unlocks unlimited drives and the PDF and CSV export. The Permit Pass is a one-time purchase that covers the whole permit and is yours forever. A weekly plan is also available.</p>
 </div>
 
 <footer>
