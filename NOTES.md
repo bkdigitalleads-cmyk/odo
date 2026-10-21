@@ -2,7 +2,8 @@
 
 Newest first. One entry per commit: date, version/build, what changed and why.
 
-- 2026-10-21: 1.0.7 build 11 (branch claude/charming-galileo-lu4qbw, restarted from main after PR #3 merged; PR, not merged). 1.0.6 build 10 is in App Review.
+- 2026-10-21: Recorded commit 7be2437 in AUDIT.md and NOTES.md (docs only, no build).
+- 2026-10-21 (7be2437): 1.0.7 build 11 (branch claude/charming-galileo-lu4qbw, restarted from main after PR #3 merged; PR, not merged). 1.0.6 build 10 is in App Review.
   - Settings driver name placeholder "Jordan Kershner" is now "Alex". Not used in onboarding or the PDF (the PDF prints a blank line when no name is set).
   - Yearly ($rc_annual, $29.99/yr, same price as the Permit Pass) is filtered out of both paywalls in src/screens/Paywall.tsx; only Weekly and the Permit Pass render. Preselection unchanged: Weekly on onboarding, Permit Pass in the app, free Lifetime first during a $0 launch offer. The onboarding trial screen now only looks at Weekly. RevenueCat, App Store Connect, purchases.ts and the `pro` entitlement check are untouched, so Yearly buyers keep Pro and Restore still works.
   - Minnesota: 50 total / 15 night (was 40/15), note "40 hours if a parent or guardian takes the 90-minute parent awareness class." Source: MN DPS Office of Traffic Safety GDL page (URL in AUDIT.md and docs/state-sources.md), provided by Brian; the page can't be fetched from this sandbox. The note now shows under the state name in the onboarding and Settings state pickers (every state that has a note) and in the Settings goal box as before. Existing MN users without a custom goal move from 40 to 50 automatically.
