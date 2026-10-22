@@ -31,6 +31,16 @@ const ONBOARDING_CLOSE_DELAY_MS = 3000;
 /** The Lifetime product's name in the app. Its price always comes from StoreKit. */
 const PERMIT_PASS = 'Permit Pass';
 
+/**
+ * Yearly ($rc_annual) is hidden from 1.0.7: at $29.99/yr it costs the same as
+ * the one-time Permit Pass. It stays in RevenueCat and App Store Connect, and
+ * anyone who already bought it keeps Pro (and Restore) through the unchanged
+ * `pro` entitlement check.
+ */
+function isOffered(p: PurchasesPackage): boolean {
+  return p.packageType !== 'ANNUAL' && p.identifier !== '$rc_annual';
+}
+
 const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 
 function perUnit(pkg: PurchasesPackage | undefined, unit: 'week' | 'year'): string {
@@ -85,17 +95,18 @@ export default function PaywallModal({ privacyUrl, onboarding = false }: { priva
     (async () => {
       const off = await getOffering();
       setOffering(off);
-      setTrialEligible(await getTrialEligibleIds(off?.availablePackages ?? []));
+      const offered = (off?.availablePackages ?? []).filter(isOffered);
+      setTrialEligible(await getTrialEligibleIds(offered));
       // During a launch offer the Lifetime price is set to 0 in App Store Connect; then it leads.
       const freeLifetime = off?.lifetime && off.lifetime.product.price === 0 ? off.lifetime : null;
-      const fallback = off?.availablePackages?.[0] ?? null;
+      const fallback = offered[0] ?? null;
       const primary =
         freeLifetime ??
         (onboarding
           ? // Weekly with 3 days free is the onboarding plan (Young: weekly beat yearly 3x).
-            off?.weekly ?? off?.annual ?? off?.lifetime ?? fallback
+            off?.weekly ?? off?.lifetime ?? fallback
           : // In the app: one payment for the whole permit.
-            off?.lifetime ?? off?.annual ?? off?.weekly ?? fallback);
+            off?.lifetime ?? off?.weekly ?? fallback);
       setSelected(primary);
       setLoading(false);
     })();
@@ -147,28 +158,23 @@ export default function PaywallModal({ privacyUrl, onboarding = false }: { priva
   };
 
   const lifetimeFree = (offering?.lifetime?.product.price ?? 1) === 0;
-  // Onboarding: Weekly (primary), Yearly, Lifetime (anchor). In the app: the Permit Pass leads.
+  // Onboarding: Weekly (primary), then the Permit Pass. In the app: the Permit Pass leads.
   // Lifetime always leads while it is free.
   const rank = (p: PurchasesPackage) =>
     p.packageType === 'LIFETIME' && (lifetimeFree || !onboarding)
       ? -1
-      : p.packageType === 'WEEKLY' ? 0 : p.packageType === 'ANNUAL' ? 1 : p.packageType === 'LIFETIME' ? 2 : 3;
-  const packages = [...(offering?.availablePackages ?? [])].sort((a, b) => rank(a) - rank(b));
+      : p.packageType === 'WEEKLY' ? 0 : p.packageType === 'LIFETIME' ? 1 : 2;
+  const packages = (offering?.availablePackages ?? []).filter(isOffered).sort((a, b) => rank(a) - rank(b));
 
   const weeklyPkg = packages.find((p) => p.packageType === 'WEEKLY');
-  const annualPkg = packages.find((p) => p.packageType === 'ANNUAL');
   const lifetimePkg = packages.find((p) => p.packageType === 'LIFETIME');
   const weeklyTrial = trialLabel(weeklyPkg, trialEligible);
-  const annualTrial = trialLabel(annualPkg, trialEligible);
   // Trial wording in the headline, plan rows and button area: onboarding only.
   const showTrial = (label: string | null) => (onboarding ? label : null);
 
   const fmt = (n: number, cur?: string) =>
     n.toLocaleString(undefined, { style: 'currency', currency: cur ?? 'USD' });
-  // Copy lever 4: the yearly-equivalent / per-month price next to the plan.
-  const annualPerMonth = annualPkg?.product.price
-    ? `${fmt(annualPkg.product.price / 12, annualPkg.product.currencyCode)}/mo`
-    : null;
+  // Copy lever 4: the yearly-equivalent price next to the weekly plan.
   const weeklyPerYear = weeklyPkg?.product.price
     ? `${fmt(weeklyPkg.product.price * 52, weeklyPkg.product.currencyCode)}/yr`
     : null;
@@ -181,12 +187,6 @@ export default function PaywallModal({ privacyUrl, onboarding = false }: { priva
         weeklyTrial ? `; it starts with ${weeklyTrial} and you are not charged until the trial ends` : ''
       }.`
     );
-  if (annualPkg)
-    disclosureParts.push(
-      `Yearly ${perUnit(annualPkg, 'year')} is an auto-renewing subscription billed once per year until cancelled${
-        annualTrial ? `; it starts with ${annualTrial} and you are not charged until the trial ends` : ''
-      }.`
-    );
   if (lifetimePkg)
     disclosureParts.push(
       lifetimeFree
@@ -196,7 +196,7 @@ export default function PaywallModal({ privacyUrl, onboarding = false }: { priva
   const disclosure =
     (disclosureParts.length > 0
       ? disclosureParts.join(' ')
-      : 'Pro is offered as a Weekly or Yearly auto-renewing subscription, or a one-time Lifetime purchase.') +
+      : `Pro is offered as a Weekly auto-renewing subscription, or the ${PERMIT_PASS}, a one-time Lifetime purchase.`) +
     ' Cancel anytime in your Apple ID settings.';
 
   return (
@@ -262,24 +262,20 @@ export default function PaywallModal({ privacyUrl, onboarding = false }: { priva
             <View style={styles.packages}>
               {packages.map((p) => {
                 const active = selected?.identifier === p.identifier;
-                const isAnnual = p.packageType === 'ANNUAL';
                 const isLifetime = p.packageType === 'LIFETIME';
                 const isWeekly = p.packageType === 'WEEKLY';
-                const title = isWeekly ? 'Weekly' : isAnnual ? 'Yearly' : isLifetime ? PERMIT_PASS : p.product.title;
+                const title = isWeekly ? 'Weekly' : isLifetime ? PERMIT_PASS : p.product.title;
                 const wTrial = showTrial(weeklyTrial);
-                const aTrial = showTrial(annualTrial);
                 // 3.1.2(c) on the row itself: trial length, then the price after it.
                 const line = isWeekly
                   ? wTrial
                     ? `${wTrial}, then ${p.product.priceString}/week`
                     : `${p.product.priceString}/week`
-                  : isAnnual
-                    ? `${aTrial ? `${aTrial}, then ` : ''}${p.product.priceString}/year${annualPerMonth ? ` · ${annualPerMonth}` : ''}`
-                    : isLifetime
-                      ? lifetimeFree
-                        ? 'Free right now, keep forever'
-                        : 'One-time, yours forever'
-                      : '';
+                  : isLifetime
+                    ? lifetimeFree
+                      ? 'Free right now, keep forever'
+                      : 'One-time, yours forever'
+                    : '';
                 const tag = lifetimeFree
                   ? isLifetime && 'LAUNCH OFFER'
                   : onboarding
@@ -316,7 +312,7 @@ export default function PaywallModal({ privacyUrl, onboarding = false }: { priva
                     <Text style={[styles.pkgPrice, { color: theme.text }]}>
                       {isLifetime && lifetimeFree ? 'Free' : p.product.priceString}
                       <Text style={{ color: theme.textSecondary, fontSize: 13 }}>
-                        {isAnnual ? '/yr' : isWeekly ? '/wk' : ''}
+                        {isWeekly ? '/wk' : ''}
                       </Text>
                     </Text>
                   </Pressable>

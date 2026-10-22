@@ -19,6 +19,7 @@ APP_NAME = "Driving Hours Log: Teen Permit"
 CHECKED = "August 24, 2026"
 IIHS = "https://www.iihs.org/topics/teenagers/graduated-licensing-laws-table"
 OFFICIAL = {
+    "MN": ("Minnesota DPS Office of Traffic Safety, Graduated Driver Licensing", "https://dps.mn.gov/divisions/ots/safe-driving-information-and-laws/driving-safety-tips/teen-driving/graduated-dl"),
     "WI": ("Wisconsin DMV form HS-303", "https://wisconsindot.gov/Documents/dmv/shared/hs303.pdf"),
     "VT": ("Vermont DMV supervised driving log", "https://dmv.vermont.gov/"),
     "VA": ("Virginia DMV driver education requirements", "https://www.dmv.virginia.gov/"),
@@ -149,7 +150,7 @@ def state_page(s, all_states):
         (f"Do I have to show the {name} DMV a log?",
          f"Many DMV offices ask for a signed record of practice hours when you schedule or take the road test, and some have their own form. Keep a log with the date, start and end time, day or night, weather and the supervisor's name for every drive, then have the supervising driver sign it. If {name} uses its own form, copy the totals across from your log."),
         ("What is the easiest way to keep the log?",
-         f"{APP_NAME} for iPhone keeps a two-tap log of every drive, tracks total and night hours against the {name} requirement, and exports a signed PDF for the DMV. It works offline and needs no account."),
+         f"{APP_NAME} for iPhone keeps a two-tap log of every drive, tracks total and night hours against the {name} requirement, and exports a signed PDF for the DMV. It works offline, anywhere you drive."),
     ]
     faq_ld = {"@context": "https://schema.org", "@type": "FAQPage",
               "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in faq]}
@@ -174,7 +175,7 @@ def state_page(s, all_states):
 <h2>What to write down for every drive</h2>
 <p>The DMV cares about totals, but the totals are only as good as the log behind them. For each practice drive record the date, the start and end time, whether it was day or night, the weather or road conditions, and who supervised. Most families lose track of the night hours first, so keep those as their own running total.</p>
 <p><a class="cta" href="{APP_URL}">Track {esc(name)} hours in the app</a></p>
-<p class="muted">{esc(APP_NAME)} has the {esc(name)} requirement built in, logs a drive in two taps, and exports a signed PDF log. Free for the first 10 drives.</p>
+<p class="muted">{esc(APP_NAME)} has the {esc(name)} requirement built in, logs a drive in two taps, and exports a signed PDF log. Your first 2 drives are free; the PDF and CSV come with Pro.</p>
 
 <h2>Frequently asked questions</h2>
 <div class="faq">

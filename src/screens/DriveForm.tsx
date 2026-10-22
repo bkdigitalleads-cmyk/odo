@@ -16,6 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme, fonts, Theme } from '../theme';
 import { Card, PillButton } from '../components';
 import { useApp } from '../state';
+import { LockOverlay } from '../LockGate';
 import {
   countDrives,
   deleteDrive,
@@ -418,6 +419,7 @@ export default function DriveFormModal({ visible, driveId, onClose }: Props) {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+      <LockOverlay />
     </Modal>
   );
 }

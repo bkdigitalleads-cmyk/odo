@@ -56,6 +56,11 @@ Already logged some hours? Now you can bring them with you.
 • The Permit Pass: one payment covers the whole permit, yours forever.
 • Fixes: miles typed with a comma now save, the custom goal field is easier to edit, and the Face ID prompt now says driving log.
 
+## What's New in 1.0.7 (paste into ASC)
+• Simpler plans: Weekly or the one-time Permit Pass. That's it.
+• Minnesota drivers: your goal is now 50 hours, 15 at night (40 if a parent takes the parent awareness class).
+• A plain example name in the driver field, so the log starts out yours.
+
 ## App Review note for 1.0.6 (paste into ASC, Notes)
 Odo is an offline log of supervised practice drives for teens with a learner's permit. There is no account or sign-in.
 
@@ -108,7 +113,8 @@ Expect 4+ (no restricted content; verify via questionnaire).
 As set in App Store Connect, Oct 20 2026:
 - odo_pro_lifetime (in the app: "Permit Pass"): $29.99 one-time (was $59.99 until Oct 20). Listed first and preselected on the in-app paywall.
 - odo_pro_weekly: 3-day free trial, then the weekly price. Preselected on the onboarding paywall; the only plan with a trial.
-- odo_pro_yearly: no free trial (the 7-day trial was deleted on Oct 20). Price $9.99/year as last recorded here, not re-checked on Oct 20.
+- odo_pro_yearly: $29.99/year, no free trial (the 7-day trial was deleted on Oct 20). Earlier versions of this file listed $9.99, which was wrong.
+- From 1.0.7 the app hides Yearly on both paywalls, because it costs the same as the one-time Permit Pass. It stays in App Store Connect and RevenueCat, and anyone who already bought Yearly keeps Pro and can still restore it.
 
 RevenueCat: entitlement `pro`, offering `default` with all three packages (confirmed Oct 20): $rc_weekly → odo_pro_weekly, $rc_annual → odo_pro_yearly, $rc_lifetime → odo_pro_lifetime.
 
