@@ -29,7 +29,7 @@ import {
   fmtHours,
   todayIso,
 } from '../db';
-import { maybeRequestReviewAfterDrive } from '../reviews';
+import { maybeSoftAskAfterDrive } from '../reviews';
 
 interface Props {
   visible: boolean;
@@ -190,7 +190,7 @@ export default function DriveFormModal({ visible, driveId, onClose }: Props) {
         if (supervisor.trim() && !settings.supervisorName) {
           updateSettings({ supervisorName: supervisor.trim() });
         }
-        maybeRequestReviewAfterDrive(await countDrives());
+        maybeSoftAskAfterDrive(await countDrives());
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       bumpData();

@@ -56,6 +56,10 @@ Already logged some hours? Now you can bring them with you.
 • The Permit Pass: one payment covers the whole permit, yours forever.
 • Fixes: miles typed with a comma now save, the custom goal field is easier to edit, and the Face ID prompt now says driving log.
 
+## What's New in 1.0.8 (paste into ASC)
+• After a few drives, Odo asks how it's going. Your answer helps us keep the log on the road.
+• Minnesota logs: the PDF goal line now notes 40 hours with the parent awareness class.
+
 ## What's New in 1.0.7 (paste into ASC)
 • Simpler plans: Weekly or the one-time Permit Pass. That's it.
 • Minnesota drivers: your goal is now 50 hours, 15 at night (40 if a parent takes the parent awareness class).
