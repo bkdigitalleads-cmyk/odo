@@ -37,6 +37,8 @@ export interface ReportData {
   goal: Goal;
   /** False for the built-in 50/10 fallback, which is not anyone's real requirement. */
   showGoal: boolean;
+  /** Appended to the goal line: Minnesota's parent-class reduction, '' otherwise. */
+  goalNote: string;
   /** Hours from before Odo, entered by the parent. Zero when none. */
   prior: { dayMin: number; nightMin: number; totalMin: number };
   /** Dated drives, oldest first (paper-log order). */
@@ -67,6 +69,8 @@ export async function buildReportData(): Promise<ReportData> {
     stateName,
     goal,
     showGoal: goal.source !== 'default',
+    // Only when the goal is Minnesota's own 50/15, not a custom goal (AUDIT 2 follow-up).
+    goalNote: settings.stateCode === 'MN' && goal.source === 'state' ? '; 40 with the parent awareness class' : '',
     prior,
     drives: [...drives].reverse(),
     driveCount: stats.driveCount,
@@ -142,7 +146,7 @@ export async function buildReportHtml(): Promise<string> {
   <div class="who">
     ${r.driverName ? `Driver: <b>${esc(r.driverName)}</b>` : 'Driver: ____________________'}
     ${r.stateName ? ` &nbsp;·&nbsp; ${esc(r.stateName)}` : ''}
-    ${r.showGoal ? `&nbsp;·&nbsp; Goal: ${goal.totalHours} hours${goal.nightHours > 0 ? ` (incl. ${goal.nightHours} at night)` : ''}` : ''}
+    ${r.showGoal ? `&nbsp;·&nbsp; Goal: ${goal.totalHours} hours${goal.nightHours > 0 ? ` (incl. ${goal.nightHours} at night)` : ''}${esc(r.goalNote)}` : ''}
   </div>
   <div class="summary">
     <div class="box"><div class="v">${fmtHours(r.totalMin)}</div><div class="l">total supervised driving</div></div>

@@ -124,7 +124,7 @@ function Sheet({ r }: { r: ReportData }) {
         Driver: {r.driverName ? <Text style={styles.bold}>{r.driverName}</Text> : '______________'}
         {r.stateName ? `  ·  ${r.stateName}` : ''}
         {r.showGoal
-          ? `  ·  Goal: ${r.goal.totalHours} hours${r.goal.nightHours > 0 ? ` (incl. ${r.goal.nightHours} at night)` : ''}`
+          ? `  ·  Goal: ${r.goal.totalHours} hours${r.goal.nightHours > 0 ? ` (incl. ${r.goal.nightHours} at night)` : ''}${r.goalNote}`
           : ''}
       </Text>
 

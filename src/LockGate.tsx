@@ -5,6 +5,7 @@ import { useTheme, fonts } from './theme';
 import { PillButton } from './components';
 import Icon from './icons';
 import { useApp } from './state';
+import { setReviewLockShowing } from './reviews';
 
 const LockCtx = createContext<{ locked: boolean; unlock: () => void }>({
   locked: false,
@@ -76,6 +77,9 @@ export default function LockGate({ children }: { children: React.ReactNode }) {
   }, [settings.lockEnabled, unlock]);
 
   const isLocked = settings.lockEnabled && locked;
+  // Set while rendering, not in an effect: child effects run first, and a rating
+  // ask must never start behind the lock screen. Idempotent, so safe on re-render.
+  setReviewLockShowing(isLocked);
 
   return (
     <LockCtx.Provider value={{ locked: isLocked, unlock }}>

@@ -7,6 +7,7 @@ import Rings from '../Rings';
 import { useApp, priorMinutes } from '../state';
 import { getDrives, getStats, Drive, Stats, fmtHours } from '../db';
 import { getStateReq } from '../states';
+import { useSoftAsk, softAskYes, softAskNo } from '../reviews';
 
 export default function HomeScreen({
   onAddDrive,
@@ -19,6 +20,8 @@ export default function HomeScreen({
   const { isPro, showPaywall, dataVersion, goal, settings, freeDriveLimit } = useApp();
   const [drives, setDrives] = useState<Drive[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  // "Is Odo working for you?" after the third drive (src/reviews.ts).
+  const softAsk = useSoftAsk();
 
   const load = useCallback(async () => {
     setDrives(await getDrives());
@@ -158,6 +161,29 @@ export default function HomeScreen({
               )}
             </Card>
 
+            {softAsk && (
+              <Card theme={theme} style={styles.askCard}>
+                <Text style={[styles.askTitle, { color: theme.text }]}>Is Odo working for you?</Text>
+                <View style={styles.askRow}>
+                  <Pressable
+                    onPress={softAskNo}
+                    style={({ pressed }) => [styles.askBtn, { borderColor: theme.border, opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    <Text style={[styles.askBtnText, { color: theme.textSecondary }]}>Not really</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={softAskYes}
+                    style={({ pressed }) => [
+                      styles.askBtn,
+                      { backgroundColor: theme.accent, borderColor: theme.accent, opacity: pressed ? 0.85 : 1 },
+                    ]}
+                  >
+                    <Text style={[styles.askBtnText, { color: theme.onAccent }]}>Yes</Text>
+                  </Pressable>
+                </View>
+              </Card>
+            )}
+
             {!isPro && (
               <Pressable onPress={showPaywall}>
                 <Card theme={theme} style={{ ...styles.limitCard, backgroundColor: theme.accentSoft }}>
@@ -224,6 +250,11 @@ const styles = StyleSheet.create({
   legendValue: { fontSize: 15, fontFamily: fonts.heading },
   goalLabel: { fontSize: 12, fontWeight: fonts.weight.medium, marginTop: 10, textAlign: 'center' },
   limitCard: { marginTop: 10, paddingVertical: 12, borderWidth: 0 },
+  askCard: { marginTop: 10, paddingVertical: 14, gap: 12 },
+  askTitle: { fontSize: 17, fontFamily: fonts.heading, textAlign: 'center' },
+  askRow: { flexDirection: 'row', gap: 10 },
+  askBtn: { flex: 1, borderWidth: 1.5, borderRadius: 20, paddingVertical: 10, alignItems: 'center' },
+  askBtnText: { fontSize: 15, fontWeight: fonts.weight.semibold },
   limitText: { fontSize: 14, fontWeight: fonts.weight.semibold, textAlign: 'center' },
   itemCard: { marginBottom: 10, padding: 12 },
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
